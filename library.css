@@ -17,11 +17,36 @@ body {
 }
 
 .gif-title {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 25%;
-    height: 25%;
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 99;           /* stays above background, below UI */
+  width: 25%;
+  max-width: 300px;
+  min-width: 100px;      /* never gets smaller than this */
+  height: auto;
+  pointer-events: none;
+}
+
+.gif-title img {
+  width: 100%;
+  height: auto;
+  display: block;
+  object-fit: contain;
+}
+
+@media (max-width: 768px) {
+  .gif-title {
+    width: 40%;
+    min-width: 100px;
+  }
+}
+
+@media (max-width: 480px) {
+  .gif-title {
+    width: 50%;
+    min-width: 100px;
+  }
 }
 
 /* Home page */
@@ -627,4 +652,113 @@ body {
 .boat-option.selected {
   border-color: white;
   background: rgba(255, 255, 255, 0.15);
+}
+
+
+
+@media (max-width: 768px) {
+
+  /* Grid becomes 2 columns on mobile */
+  .library-grid {
+    grid-template-columns: repeat(2, 1fr);
+    margin-top: 120px;
+    padding: 10px;
+    gap: 12px;
+  }
+
+  .boat-card-gif {
+    width: 80px;
+    height: 80px;
+  }
+
+  .boat-card-song {
+    font-size: 0.75rem;
+  }
+
+  .boat-card-route {
+    font-size: 0.6rem;
+  }
+
+  /* Panel goes full width on mobile */
+  .boat-panel-inline {
+    padding: 12px;
+  }
+
+  /* Stack comment and recordings vertically */
+  .panel-layout {
+    flex-direction: column;
+  }
+
+  .comment-section {
+    width: 100%;
+    max-height: 200px;
+  }
+
+  .panel-right {
+    width: 100%;
+  }
+
+  .boat-window {
+    width: 100%;
+    padding: 12px;
+  }
+
+  /* Smaller buttons */
+  .add-btn {
+    bottom: 10px;
+    right: 10px;
+    width: 70px;
+    height: 70px;
+  }
+
+  .info-btn {
+    bottom: 100px;
+    right: 10px;
+    width: 70px;
+    height: 70px;
+  }
+
+  .home-btn {
+    top: 10px;
+    right: 10px;
+    width: 70px;
+    height: 70px;
+  }
+
+  /* Title gif smaller */
+  .gif-title {
+    width: 40%;
+    height: auto;
+  }
+
+  /* Dialogue fits screen */
+  .dialogue {
+    width: 90vw;
+    padding: 20px;
+  }
+
+  .boat-option {
+    width: 40px;
+    height: 40px;
+  }
+
+  .info-window {
+    width: 90vw;
+    padding: 20px;
+  }
+
+  .record-btn {
+    width: 55px;
+    height: 55px;
+  }
+
+  .accept-discard-btn {
+    width: 36px;
+    height: 36px;
+  }
+
+  .song-title-icons img {
+    width: 28px;
+    height: 28px;
+  }
 }
