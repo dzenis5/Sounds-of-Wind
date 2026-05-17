@@ -162,6 +162,18 @@ function buildWrapper(song, from, to, boatFile, x, y, boatId) {
   wrapper.dataset.boatId      = boatId;
   wrapper._dragMoved          = false;
 
+  // Use absolute on mobile so boats scroll with the canvas
+  const isMobile = window.innerWidth <= 768;
+  wrapper.style.position      = isMobile ? 'absolute' : 'fixed';
+  wrapper.style.left          = x + 'px';
+  wrapper.style.top           = y + 'px';
+  wrapper.style.width         = boatW + 'px';
+  wrapper.style.zIndex        = '50';
+  wrapper.style.textAlign     = 'center';
+  wrapper.style.pointerEvents = 'auto';
+  wrapper.dataset.boatId      = boatId;
+  wrapper._dragMoved          = false;
+
   wrapper.innerHTML = `
     <div style="color:white;font-size:0.85rem;font-weight:bold;text-shadow:0 1px 4px rgba(0,0,0,0.8);pointer-events:none;">${song}</div>
     <img class="boat-gif" src="boat/${boatFile}" style="width:${boatW}px;height:${boatH}px;object-fit:contain;display:block;cursor:pointer;">
@@ -187,7 +199,12 @@ function buildWrapper(song, from, to, boatFile, x, y, boatId) {
 
 function spawnBoat(song, from, to, boatFile) {
   const padding = 10;
-  const maxY = window.innerHeight * 0.90;
+
+  const isMobile   = window.innerWidth <= 768;
+  const canvasW    = isMobile ? window.innerWidth  * 3 : window.innerWidth;
+  const canvasH    = isMobile ? window.innerHeight * 2 : window.innerHeight;
+
+  const maxY = canvasH * 0.90;
   const minY = 100;
 
   const blocked = [];
@@ -202,7 +219,7 @@ function spawnBoat(song, from, to, boatFile) {
 
   while (!placed && attempts < 100) {
     attempts++;
-    const x = Math.random() * (window.innerWidth - boatW);
+    const x = Math.random() * (canvasW - boatW);
     const y = minY + labelH + Math.random() * (maxY - minY - boatH - labelH);
     const candidate = { left: x, right: x + boatW, top: y - labelH, bottom: y + boatH };
     const overlaps = blocked.some(b => rectsOverlap(candidate, b, padding));
@@ -219,6 +236,34 @@ function spawnBoat(song, from, to, boatFile) {
   }
 
   if (!placed) alert('No space left for more boats!');
+}
+
+function repositionBoats() {
+  const isMobile    = window.innerWidth <= 768;
+  const canvasW     = isMobile ? window.innerWidth  * 3 : window.innerWidth;
+  const canvasH     = isMobile ? window.innerHeight * 2 : window.innerHeight;
+
+  const wrappers = document.querySelectorAll('[data-boat-id]');
+  wrappers.forEach(wrapper => {
+    wrapper.style.position = isMobile ? 'absolute' : 'fixed';
+
+    let x = parseFloat(wrapper.style.left);
+    let y = parseFloat(wrapper.style.top);
+
+    x = Math.max(0, Math.min(canvasW - wrapper.offsetWidth,  x));
+    y = Math.max(0, Math.min(canvasH - wrapper.offsetHeight, y));
+
+    wrapper.style.left = x + 'px';
+    wrapper.style.top  = y + 'px';
+
+    const boatId = wrapper.dataset.boatId;
+    const boat   = boatSaves.find(b => b.id === boatId);
+    if (boat) {
+      boat.x = x;
+      boat.y = y;
+      saveBoat(boat);
+    }
+  });
 }
 
 // ── Boat window ───────────────────────────────────────────────────────────
@@ -292,15 +337,33 @@ let analyser      = null;
 let audioCtx      = null;
 
 function startRecording() {
-  navigator.mediaDevices.getUserMedia({ audio: true }).then(function(stream) {
+  const win     = document.getElementById('boat-window');
+  const isChoir = win && win.dataset.choirMode === 'true';
+
+  // Use different mic constraints for choir vs solo mode
+  const micConstraints = isChoir
+    ? {
+        audio: {
+          echoCancellation: false,
+          noiseSuppression: false,
+          autoGainControl:  false,
+        }
+      }
+    : {
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl:  true,
+        }
+      };
+
+  navigator.mediaDevices.getUserMedia(micConstraints).then(function(stream) {
     audioCtx = new AudioContext();
     analyser = audioCtx.createAnalyser();
     const source = audioCtx.createMediaStreamSource(stream);
     source.connect(analyser);
     analyser.fftSize = 256;
 
-    const win = document.getElementById('boat-window');
-    const isChoir = win && win.dataset.choirMode === 'true';
     if (isChoir) {
       document.querySelectorAll('#saved-audio-container audio').forEach(a => {
         a.currentTime = 0; a.play();
@@ -425,6 +488,16 @@ function toggleChoir() {
   const btn = document.getElementById('choir-btn');
   btn.src   = isChoir ? 'icons/solo.png'  : 'icons/choir.png';
   btn.title = isChoir ? 'Solo'            : 'Choir';
+
+  // Show headphone tip when entering choir mode
+  if (!isChoir) {
+    const hint = document.getElementById('record-hint');
+    if (hint) hint.textContent = 'Tip: use headphones for best choir recording';
+    setTimeout(() => {
+      if (hint) hint.textContent = 'Press record to add a song';
+    }, 4000);
+  }
+
   updatePreviewChoir();
 }
 
