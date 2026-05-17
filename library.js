@@ -141,15 +141,33 @@ let audioCtx      = null;
 let playAllActive = false;
 
 function startRecording() {
-  navigator.mediaDevices.getUserMedia({ audio: true }).then(function(stream) {
+  const win     = document.getElementById('boat-window');
+  const isChoir = win && win.dataset.choirMode === 'true';
+
+  // Use different mic constraints for choir vs solo mode
+  const micConstraints = isChoir
+    ? {
+        audio: {
+          echoCancellation: false,
+          noiseSuppression: false,
+          autoGainControl:  false,
+        }
+      }
+    : {
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl:  true,
+        }
+      };
+
+  navigator.mediaDevices.getUserMedia(micConstraints).then(function(stream) {
     audioCtx = new AudioContext();
     analyser = audioCtx.createAnalyser();
     const source = audioCtx.createMediaStreamSource(stream);
     source.connect(analyser);
     analyser.fftSize = 256;
 
-    const panel   = document.getElementById('boat-panel');
-    const isChoir = panel && panel.dataset.choirMode === 'true';
     if (isChoir) {
       document.querySelectorAll('#saved-audio-container audio').forEach(a => {
         a.currentTime = 0; a.play();
@@ -192,7 +210,7 @@ function startRecording() {
         <img src="icons/accept.png"  class="accept-discard-btn" title="Accept"  onclick="acceptRecording('${url}')">
         <img src="icons/discard.png" class="accept-discard-btn" title="Discard" onclick="discardRecording()">
       `;
-      document.getElementById('boat-panel').appendChild(acceptDiscard);
+      document.getElementById('boat-window').appendChild(acceptDiscard);
       updatePreviewChoir();
     };
 
@@ -289,6 +307,16 @@ function toggleChoir() {
   const btn = document.getElementById('choir-btn');
   btn.src   = isChoir ? 'icons/solo.png'  : 'icons/choir.png';
   btn.title = isChoir ? 'Solo'            : 'Choir';
+
+  // Show headphone tip when entering choir mode
+  if (!isChoir) {
+    const hint = document.getElementById('record-hint');
+    if (hint) hint.textContent = 'Tip: use headphones for best choir recording';
+    setTimeout(() => {
+      if (hint) hint.textContent = 'Press record to add a song';
+    }, 4000);
+  }
+
   updatePreviewChoir();
 }
 
