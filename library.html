@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Library – Sounds of Wind</title>
+  <link rel="stylesheet" href="library.css">
+
+  <script type="module">
+  import { initializeApp }
+    from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getFirestore, collection, doc, setDoc, getDocs, deleteDoc }
+    from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+  const firebaseConfig = {
+  apiKey: "AIzaSyB1B2PBE3VMaCL6y3ethH0A9VD_tnPRRaA",
+  authDomain: "sound-of-wind.firebaseapp.com",
+  databaseURL: "https://sound-of-wind-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "sound-of-wind",
+  storageBucket: "sound-of-wind.firebasestorage.app",
+  messagingSenderId: "75775773966",
+  appId: "1:75775773966:web:2baec76f99a33321105b5f"
+};
+
+  const app = initializeApp(firebaseConfig);
+  const db  = getFirestore(app);
+
+  window.db           = db;
+  window.fsCollection = collection;
+  window.fsDoc        = doc;
+  window.fsSetDoc     = setDoc;
+  window.fsGetDocs    = getDocs;
+  window.fsDeleteDoc  = deleteDoc;
+
+  // Signal to the rest of the page that Firebase is ready
+  window.firebaseReady = true;
+  window.dispatchEvent(new Event('firebaseReady'));
+</script>
+</head>
+<body>
+
+  <div class="gif-title" onclick="openHome()">
+    <img class="gif title" src="title.gif" alt="title">
+  </div>
+
+  <!-- Home button -->
+  <div class="home-btn" onclick="openHome()">
+    <img src="icons/home.png" alt="home" onerror="this.src='icons/home.png'">
+  </div>
+
+  <!-- Grid -->
+  <div class="library-grid" id="library-grid">
+    <p class="loading-text">Loading boats...</p>
+  </div>
+
+  <!-- Info button -->
+<div class="info-btn" onclick="toggleInfo()">
+  <img src="icons/info.png" alt="info" onerror="this.src='icons/info.png'">
+</div>
+
+<!-- Add button -->
+<div class="add-btn" onclick="handleAdd()">
+  <img id="add-icon" src="icons/add.png" alt="add" onerror="this.src='icons/add.png'">
+</div>
+
+  <script src="library.js"></script>
+
+</body>
+</html>

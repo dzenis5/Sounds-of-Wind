@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sounds of Wind</title>
+    <link rel="stylesheet" href="style.css">
+
+      <!-- Firebase -->
+  <script type="module">
+  import { initializeApp }
+    from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getFirestore, collection, doc, setDoc, getDocs, deleteDoc }
+    from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+  const firebaseConfig = {
+  apiKey: "AIzaSyB1B2PBE3VMaCL6y3ethH0A9VD_tnPRRaA",
+  authDomain: "sound-of-wind.firebaseapp.com",
+  databaseURL: "https://sound-of-wind-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "sound-of-wind",
+  storageBucket: "sound-of-wind.firebasestorage.app",
+  messagingSenderId: "75775773966",
+  appId: "1:75775773966:web:2baec76f99a33321105b5f"
+};
+
+  const app = initializeApp(firebaseConfig);
+  const db  = getFirestore(app);
+
+  window.db           = db;
+  window.fsCollection = collection;
+  window.fsDoc        = doc;
+  window.fsSetDoc     = setDoc;
+  window.fsGetDocs    = getDocs;
+  window.fsDeleteDoc  = deleteDoc;
+
+  // Signal to the rest of the page that Firebase is ready
+  window.firebaseReady = true;
+  window.dispatchEvent(new Event('firebaseReady'));
+</script>
+</head>
+<body>
+
+  <div class="gif-background">
+    <img class="gif bottom-gif" src="waves/wave.gif" alt="wave">
+    <img class="gif midbot-gif" src="waves/wave2.gif" alt="wave2">
+    <img class="gif midtop-gif" src="waves/wave3.gif" alt="wave3">
+    <img class="gif top-gif" src="waves/wave4.gif" alt="wave4">
+  </div>
+
+  <div class="gif-title">
+    <img class="gif title" src="title.gif" alt="title">
+  </div>
+
+  <!-- Audio element -->
+<audio id="bg-audio" src="waves/waves.mp3" autoplay loop></audio>
+
+<!-- Mute button -->
+<div class="audio-controls">
+  <div class="mute-btn" onclick="toggleMute()">
+    <img id="mute-icon" src="icons/mute3.png" alt="audio on" onerror="this.src='icons/mute3.png'">
+  </div>
+  <input type="range" id="volume-bar" min="0" max="1" step="0.01" value="1">
+</div>
+
+<!-- Add button -->
+<div class="add-btn" onclick="handleAdd()">
+  <img id="add-icon" src="icons/add.png" alt="add" onerror="this.src='icons/add.png'">
+</div>
+
+<!-- Info button -->
+<div class="info-btn" onclick="toggleInfo()">
+  <img src="icons/info.png" alt="info" onerror="this.src='icons/info.png'">
+</div>
+
+<!-- Library button -->
+<div class="library-btn" onclick="openLibrary()">
+  <img src="icons/library.png" alt="library" onerror="this.src='icons/library.png'">
+</div>
+
+<script src="script.js"></script>
+
+</body>
+</html>

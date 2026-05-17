@@ -1,0 +1,489 @@
+body {
+  font-family: sans-serif;
+  margin: 0;
+  padding: 20px;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  min-height: 100vh;
+  overflow-x: hidden;
+  background-color: #0a0a2e;
+}
+
+.gif-background {
+  position: fixed;       /* stays in place while scrolling */
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: -1;
+}
+
+.gif {
+  position: absolute;
+  width: 100%;
+  height: 80%;           /* each gif takes up half the screen height */
+  object-fit: cover;     /* fills the area without stretching */
+}
+
+.bottom-gif {
+  bottom: 65%;             /* wave.gif anchored to bottom */
+}
+
+.midbot-gif {
+  bottom: 40%;                /* wave2.gif anchored to top */
+}
+
+.midtop-gif {
+    bottom: 10%;
+}
+
+.top-gif {
+    bottom: -15%;
+}
+
+.gif-title {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 25%;
+    height: 25%;
+}
+
+.audio-controls {
+  position: fixed;
+  top: 30px;
+  right: 50px;
+  z-index: 100;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 2px;
+}
+
+.mute-btn {
+  cursor: pointer;
+  width: 80px;
+  height: 80px;
+}
+
+.mute-btn img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+#volume-bar {
+  width: 100px;
+  accent-color: rgb(76, 186, 236);   /* change this to match your colour scheme */
+  cursor: pointer;
+  writing-mode: horizontal-tb;   /* makes the slider vertical */
+  direction: ltr;               /* makes it go top = loud, bottom = quiet */
+}
+
+/* Library */
+.library-btn {
+  position: fixed;
+  bottom: 280px;         /* sits above the info button */
+  right: 50px;
+  z-index: 100;
+  cursor: pointer;
+  width: 150px;
+  height: 150px;
+}
+
+.library-btn img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+/* Add */
+.add-btn {
+  position: fixed;
+  bottom: 20px;
+  right: 50px;         
+  z-index: 100;
+  cursor: pointer;
+  width: 150px;
+  height: 150px;
+}
+
+.add-btn img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+/* Info part */
+.info-btn {
+  position: fixed;
+  bottom: 150px;          /* sits above the add button */
+  right: 50px;           /* 50px from the right */
+  z-index: 100;
+  cursor: pointer;
+  width: 150px;
+  height: 150px;
+}
+
+.info-btn img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.info-window {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 300;
+  background: #1a2a4a;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 12px;
+  padding: 30px;
+  width: 340px;
+  color: white;
+  font-family: sans-serif;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+}
+
+.info-window-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 16px;
+}
+
+.info-window-header h2 {
+  margin: 0;
+  font-size: 1.2rem;
+}
+
+.info-window-header img {
+  width: 35px;
+  height: 35px;
+  cursor: pointer;
+  opacity: 0.85;
+  transition: opacity 0.2s;
+}
+
+.info-window-header img:hover {
+  opacity: 1;
+}
+
+.info-window p {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.6;
+  opacity: 0.85;
+}
+
+.boat {
+  position: fixed;
+  z-index: 50;           /* above gifs (z-index: -1) but below UI (z-index: 100) */
+  width: 180px;
+  height: 180px;
+  object-fit: contain;
+  pointer-events: none;  /* so boats don't block clicks */
+}
+
+/* Overlay background */
+.overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.6);
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Dialogue box */
+.dialogue {
+  background: #1a2a4a;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 12px;
+  padding: 30px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 300px;
+  color: white;
+  font-family: sans-serif;
+}
+
+.dialogue h2 {
+  margin: 0 0 10px 0;
+  font-size: 1.2rem;
+  text-align: center;
+}
+
+.dialogue label {
+  font-size: 0.85rem;
+  opacity: 0.8;
+}
+
+.dialogue input {
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  font-size: 0.95rem;
+  outline: none;
+}
+
+.dialogue input::placeholder {
+  opacity: 0.4;
+}
+
+.dialogue-buttons {
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.dialogue-buttons button {
+  flex: 1;
+  padding: 8px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.95rem;
+}
+
+.dialogue-buttons button:first-child {
+  background: white;
+  color: #1a2a4a;
+  font-weight: bold;
+}
+
+.dialogue-buttons button:last-child {
+  background: rgba(255, 255, 255, 0.15);
+  color: white;
+}
+
+/* Boat Selection */
+.boat-selector {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  margin-top: 4px;
+}
+
+.boat-option {
+  width: 50px;
+  height: 50px;
+  object-fit: contain;
+  cursor: pointer;
+  border-radius: 8px;
+  border: 2px solid transparent;
+  padding: 3px;
+  transition: border-color 0.2s;
+}
+
+.boat-option:hover {
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+.boat-option.selected {
+  border-color: white;
+  background: rgba(255, 255, 255, 0.15);
+}
+
+/* Boat label */
+.boat-label {
+  position: fixed;
+  z-index: 50;
+  pointer-events: none;
+  text-align: left;
+  color: white;
+  text-shadow: 0px 1px 4px rgba(26, 21, 70, 0.8);
+}
+
+.boat-label .song {
+  font-size: 0.105rem;
+  font-weight: bold;
+  margin-bottom: 2px;
+}
+
+.boat-label .route {
+  font-size: 0.85rem;
+  opacity: 0.8;
+}
+
+/* Boat Window */
+.boat-window {
+  position: fixed;
+  z-index: 300;
+  background: #1a2a4a;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 12px;
+  padding: 20px;
+  width: 320px;
+  color: white;
+  font-family: sans-serif;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+  max-height: 80vh;        /* never taller than 80% of screen height */
+  overflow-y: auto;        /* scrolls inside the window when content overflows */
+}
+
+.boat-window-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.boat-window-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.boat-window-info .song-title {
+  font-size: 1.2rem;
+  font-weight: bold;
+}
+
+.boat-window-info .song-route {
+  font-size: 0.9rem;
+  opacity: 0.7;
+}
+
+.boat-window-icons {
+  display: flex;
+  align-items: top;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.boat-window-icons img {
+  width: 35px;
+  height: 35px;
+  object-fit: contain;
+  cursor: pointer;
+  opacity: 0.85;
+  transition: opacity 0.2s;
+}
+
+/* override size for choir icon only */
+.boat-window-icons img[title="Choir"] {
+  width: 55px;
+  height: 55px;
+}
+
+.boat-window-icons img:hover {
+  opacity: 1;
+}
+
+.boat-window-hint {
+  font-style: italic;
+  font-size: 0.75rem;
+  opacity: 0.6;
+  margin-top: 8px;
+}
+
+.waveform-canvas {
+  width: 100%;
+  height: 60px;
+  margin-top: 8px;
+  border-radius: 6px;
+  background: rgba(255,255,255,0.05);
+}
+
+.boat-window-audio {
+  width: 100%;
+  margin-top: 8px;
+  border-radius: 6px;
+}
+
+.boat-window-footer {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.boat-window-footer img {
+  object-fit: contain;
+  cursor: pointer;
+  opacity: 0.85;
+  transition: opacity 0.2s;
+}
+
+.boat-window-footer img:hover {
+  opacity: 1;
+}
+
+.record-btn {
+  width: 55px;
+  height: 55px;
+}
+
+.accept-discard-btn {
+  width: 40px;
+  height: 40px;
+}
+
+.saved-audio {
+  width: 100%;
+  margin-top: 8px;
+  border-radius: 6px;
+}
+
+.boat-window-icons img[title="Choir"],
+.boat-window-icons img[title="Solo"] {
+  width: 55px;
+  height: 55px;
+}
+
+.delete-boat-btn {
+  display: none;
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  width: 18px;
+  height: 18px;
+  background: rgba(200, 50, 50, 0.9);
+  color: white;
+  border-radius: 50%;
+  font-size: 0.6rem;
+  text-align: center;
+  line-height: 18px;
+  cursor: pointer;
+  z-index: 101;
+}
+
+/* only show delete button when moderator mode is active */
+.moderator-mode [data-boat-id]:hover .delete-boat-btn {
+  display: block;
+}
+
+[data-boat-id] {
+  cursor: grab;
+}
+
+[data-boat-id]:active {
+  cursor: grabbing;
+}
+
+.info-window p {
+  white-space: pre-wrap;   /* preserves line breaks and spacing */
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.6;
+  opacity: 0.85;
+}
