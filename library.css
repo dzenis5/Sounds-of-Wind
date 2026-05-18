@@ -728,6 +728,10 @@ body {
     gap: 12px;
   }
 
+  .library-grid {
+    overflow: visible !important;
+  }
+  
   .boat-card-gif {
     width: 80px;
     height: 80px;
