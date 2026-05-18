@@ -756,4 +756,9 @@ body {
     width: 100%;
     max-height: none;
   }
+
+  .boat-panel-inline {
+    max-height: none;     /* let it grow naturally */
+    overflow-y: visible;
+  }
 }
