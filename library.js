@@ -14,6 +14,16 @@ body {
   background-color: #0a0a2e;
 }
 
+if (window.firebaseReady) {
+  loadLibrary();
+} else {
+  window.addEventListener('firebaseReady', () => loadLibrary());
+  // Fallback in case event already fired before this script loaded
+  setTimeout(() => {
+    if (allBoats.length === 0 && window.db) loadLibrary();
+  }, 2000);
+}
+
 .gif-title {
   position: fixed;
   top: 0;
