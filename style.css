@@ -518,37 +518,27 @@ body {
     min-width: 100px;
   }
 
+  /* Audio controls — keep them in the corner */
   .audio-controls {
-    flex-direction: row;
-    align-items: center;
-    top: 2px;
-    right: 10px;
+    top: 8px;
+    right: 8px;
+    gap: 4px;
   }
 
   .mute-btn {
-    width: 55px;
-    height: 55px;
+    width: 40px;
+    height: 40px;
   }
 
   #volume-bar {
-    writing-mode: horizontal-tb;
-    direction: ltr;
-    width: 60px;
-    accent-color: rgb(46, 185, 240);
+    width: 50px;
   }
 
-  .add-btn,
-  .info-btn,
-  .library-btn {
-    position: fixed;
-    right: 10px;
-    width: 70px;
-    height: 70px;
-  }
+  /* Right-side nav buttons */
+  .add-btn     { bottom: 12px; right: 8px; width: 55px; height: 55px; }
+  .info-btn    { bottom: 155px; right: 8px; width: 55px; height: 55px; }
+  .library-btn { bottom: 80px;  right: 8px; width: 55px; height: 55px; }
 
-  .add-btn     { bottom: 10px; }
-  .info-btn    { bottom: 190px; }
-  .library-btn { bottom: 100px; }
 
   [data-boat-id] {
     position: absolute !important;
