@@ -719,10 +719,7 @@ body {
 @media (max-width: 768px) {
 
   .library-grid {
-    grid-template-columns: repeat(2, 1fr);
-    margin-top: 80px;   /* was 120px — title gif is smaller on mobile */
-    padding: 10px;
-    gap: 12px;
+    overflow: visible !important;
   }
 
   /* All fixed buttons: pull them closer to screen edge */
@@ -758,7 +755,8 @@ body {
   }
 
   .boat-panel-inline {
-    max-height: none;     /* let it grow naturally */
-    overflow-y: visible;
+    max-height: none !important;
+    overflow-y: visible !important;
+    padding: 12px;
   }
 }
