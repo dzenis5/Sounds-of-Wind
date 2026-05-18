@@ -1,8 +1,4 @@
-body {
-  font-family: sans-serif;
-  margin: 0;
-  padding: 20px;
-}
+/* ── Reset & Base ─────────────────────────────────────────────────────────── */
 
 * {
   margin: 0;
@@ -11,13 +7,16 @@ body {
 }
 
 body {
+  font-family: sans-serif;
   min-height: 100vh;
-  overflow-x: hidden;
   background-color: #0a0a2e;
+  overflow-x: hidden;
 }
 
+/* ── Background Gifs ─────────────────────────────────────────────────────── */
+
 .gif-background {
-  position: fixed;       /* stays in place while scrolling */
+  position: fixed;
   top: 0;
   left: 0;
   width: 100%;
@@ -28,34 +27,25 @@ body {
 .gif {
   position: absolute;
   width: 100%;
-  height: 80%;           /* each gif takes up half the screen height */
-  object-fit: cover;     /* fills the area without stretching */
+  height: 80%;
+  object-fit: cover;
 }
 
-.bottom-gif {
-  bottom: 65%;             /* wave.gif anchored to bottom */
-}
+.bottom-gif { bottom: 65%; }
+.midbot-gif { bottom: 40%; }
+.midtop-gif { bottom: 10%; }
+.top-gif    { bottom: -15%; }
 
-.midbot-gif {
-  bottom: 40%;                /* wave2.gif anchored to top */
-}
-
-.midtop-gif {
-    bottom: 10%;
-}
-
-.top-gif {
-    bottom: -15%;
-}
+/* ── Title Gif ───────────────────────────────────────────────────────────── */
 
 .gif-title {
   position: fixed;
   top: 0;
   left: 0;
-  z-index: 99;           /* stays above background, below UI */
+  z-index: 99;
   width: 25%;
   max-width: 300px;
-  min-width: 100px;      /* never gets smaller than this */
+  min-width: 100px;
   height: auto;
   pointer-events: none;
 }
@@ -67,19 +57,7 @@ body {
   object-fit: contain;
 }
 
-@media (max-width: 768px) {
-  .gif-title {
-    width: 40%;
-    min-width: 100px;
-  }
-}
-
-@media (max-width: 480px) {
-  .gif-title {
-    width: 50%;
-    min-width: 100px;
-  }
-}
+/* ── Audio Controls ──────────────────────────────────────────────────────── */
 
 .audio-controls {
   position: fixed;
@@ -106,16 +84,18 @@ body {
 
 #volume-bar {
   width: 100px;
-  accent-color: rgb(76, 186, 236);   /* change this to match your colour scheme */
+  accent-color: rgb(76, 186, 236);
   cursor: pointer;
-  writing-mode: horizontal-tb;   /* makes the slider vertical */
-  direction: ltr;               /* makes it go top = loud, bottom = quiet */
+  writing-mode: horizontal-tb;
+  direction: ltr;
 }
 
-/* Library */
+/* ── Buttons ─────────────────────────────────────────────────────────────── */
+
+.add-btn,
+.info-btn,
 .library-btn {
   position: fixed;
-  bottom: 280px;         /* sits above the info button */
   right: 50px;
   z-index: 100;
   cursor: pointer;
@@ -123,45 +103,19 @@ body {
   height: 150px;
 }
 
+.add-btn     { bottom: 20px; }
+.info-btn    { bottom: 280px; }
+.library-btn { bottom: 150px; }
+
+.add-btn img,
+.info-btn img,
 .library-btn img {
   width: 100%;
   height: 100%;
   object-fit: contain;
 }
 
-/* Add */
-.add-btn {
-  position: fixed;
-  bottom: 20px;
-  right: 50px;         
-  z-index: 100;
-  cursor: pointer;
-  width: 150px;
-  height: 150px;
-}
-
-.add-btn img {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-}
-
-/* Info part */
-.info-btn {
-  position: fixed;
-  bottom: 150px;          /* sits above the add button */
-  right: 50px;           /* 50px from the right */
-  z-index: 100;
-  cursor: pointer;
-  width: 150px;
-  height: 150px;
-}
-
-.info-btn img {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-}
+/* ── Info Window ─────────────────────────────────────────────────────────── */
 
 .info-window {
   position: fixed;
@@ -204,22 +158,15 @@ body {
 }
 
 .info-window p {
+  white-space: pre-wrap;
   margin: 0;
   font-size: 0.9rem;
   line-height: 1.6;
   opacity: 0.85;
 }
 
-.boat {
-  position: fixed;
-  z-index: 50;           /* above gifs (z-index: -1) but below UI (z-index: 100) */
-  width: 180px;
-  height: 180px;
-  object-fit: contain;
-  pointer-events: none;  /* so boats don't block clicks */
-}
+/* ── Overlay & Dialogue ──────────────────────────────────────────────────── */
 
-/* Overlay background */
 .overlay {
   position: fixed;
   top: 0;
@@ -233,7 +180,6 @@ body {
   justify-content: center;
 }
 
-/* Dialogue box */
 .dialogue {
   background: #1a2a4a;
   border: 1px solid rgba(255, 255, 255, 0.2);
@@ -298,7 +244,8 @@ body {
   color: white;
 }
 
-/* Boat Selection */
+/* ── Boat Selector ───────────────────────────────────────────────────────── */
+
 .boat-selector {
   display: flex;
   flex-wrap: wrap;
@@ -318,161 +265,21 @@ body {
   transition: border-color 0.2s;
 }
 
-.boat-option:hover {
-  border-color: rgba(255, 255, 255, 0.4);
-}
-
+.boat-option:hover  { border-color: rgba(255, 255, 255, 0.4); }
 .boat-option.selected {
   border-color: white;
   background: rgba(255, 255, 255, 0.15);
 }
 
-/* Boat label */
-.boat-label {
+/* ── Boats ───────────────────────────────────────────────────────────────── */
+
+[data-boat-id] {
   position: fixed;
-  z-index: 50;
-  pointer-events: none;
-  text-align: left;
-  color: white;
-  text-shadow: 0px 1px 4px rgba(26, 21, 70, 0.8);
+  cursor: grab;
 }
 
-.boat-label .song {
-  font-size: 0.105rem;
-  font-weight: bold;
-  margin-bottom: 2px;
-}
-
-.boat-label .route {
-  font-size: 0.85rem;
-  opacity: 0.8;
-}
-
-/* Boat Window */
-.boat-window {
-  position: fixed;
-  z-index: 300;
-  background: #1a2a4a;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 12px;
-  padding: 20px;
-  width: 320px;
-  color: white;
-  font-family: sans-serif;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.4);
-  max-height: 80vh;        /* never taller than 80% of screen height */
-  overflow-y: auto;        /* scrolls inside the window when content overflows */
-}
-
-.boat-window-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 10px;
-}
-
-.boat-window-info {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.boat-window-info .song-title {
-  font-size: 1.2rem;
-  font-weight: bold;
-}
-
-.boat-window-info .song-route {
-  font-size: 0.9rem;
-  opacity: 0.7;
-}
-
-.boat-window-icons {
-  display: flex;
-  align-items: top;
-  gap: 8px;
-  flex-shrink: 0;
-}
-
-.boat-window-icons img {
-  width: 35px;
-  height: 35px;
-  object-fit: contain;
-  cursor: pointer;
-  opacity: 0.85;
-  transition: opacity 0.2s;
-}
-
-/* override size for choir icon only */
-.boat-window-icons img[title="Choir"] {
-  width: 55px;
-  height: 55px;
-}
-
-.boat-window-icons img:hover {
-  opacity: 1;
-}
-
-.boat-window-hint {
-  font-style: italic;
-  font-size: 0.75rem;
-  opacity: 0.6;
-  margin-top: 8px;
-}
-
-.waveform-canvas {
-  width: 100%;
-  height: 60px;
-  margin-top: 8px;
-  border-radius: 6px;
-  background: rgba(255,255,255,0.05);
-}
-
-.boat-window-audio {
-  width: 100%;
-  margin-top: 8px;
-  border-radius: 6px;
-}
-
-.boat-window-footer {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 16px;
-  margin-top: 16px;
-}
-
-.boat-window-footer img {
-  object-fit: contain;
-  cursor: pointer;
-  opacity: 0.85;
-  transition: opacity 0.2s;
-}
-
-.boat-window-footer img:hover {
-  opacity: 1;
-}
-
-.record-btn {
-  width: 55px;
-  height: 55px;
-}
-
-.accept-discard-btn {
-  width: 40px;
-  height: 40px;
-}
-
-.saved-audio {
-  width: 100%;
-  margin-top: 8px;
-  border-radius: 6px;
-}
-
-.boat-window-icons img[title="Choir"],
-.boat-window-icons img[title="Solo"] {
-  width: 55px;
-  height: 55px;
+[data-boat-id]:active {
+  cursor: grabbing;
 }
 
 .delete-boat-btn {
@@ -492,107 +299,206 @@ body {
   z-index: 101;
 }
 
-/* only show delete button when moderator mode is active */
 .moderator-mode [data-boat-id]:hover .delete-boat-btn {
   display: block;
 }
 
-[data-boat-id] {
-  cursor: grab;
+/* ── Boat Window ─────────────────────────────────────────────────────────── */
+
+.boat-window {
+  position: fixed;
+  z-index: 300;
+  background: #1a2a4a;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 12px;
+  padding: 20px;
+  width: 320px;
+  color: white;
+  font-family: sans-serif;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+  max-height: 80vh;
+  overflow-y: auto;
 }
 
-[data-boat-id]:active {
-  cursor: grabbing;
+.boat-window-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
 }
 
-.info-window p {
-  white-space: pre-wrap;   /* preserves line breaks and spacing */
-  margin: 0;
-  font-size: 0.9rem;
-  line-height: 1.6;
+.boat-window-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.boat-window-info .song-title { font-size: 1.2rem; font-weight: bold; }
+.boat-window-info .song-route { font-size: 0.9rem; opacity: 0.7; }
+
+.boat-window-icons {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.boat-window-icons img {
+  width: 35px;
+  height: 35px;
+  object-fit: contain;
+  cursor: pointer;
   opacity: 0.85;
+  transition: opacity 0.2s;
 }
 
+.boat-window-icons img[title="Choir"],
+.boat-window-icons img[title="Solo"] {
+  width: 55px;
+  height: 55px;
+}
+
+.boat-window-icons img:hover { opacity: 1; }
+
+.boat-window-hint {
+  font-style: italic;
+  font-size: 0.75rem;
+  opacity: 0.6;
+  margin-top: 8px;
+}
+
+.boat-window-footer {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.boat-window-footer img {
+  object-fit: contain;
+  cursor: pointer;
+  opacity: 0.85;
+  transition: opacity 0.2s;
+}
+
+.boat-window-footer img:hover { opacity: 1; }
+
+/* ── Song Title Row ──────────────────────────────────────────────────────── */
+
+.song-title-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.song-title-icons {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.song-title-icons img {
+  width: 36px;
+  height: 36px;
+  cursor: pointer;
+  opacity: 0.85;
+  transition: opacity 0.2s;
+}
+
+.song-title-icons img:hover { opacity: 1; }
+
+/* ── Audio Elements ──────────────────────────────────────────────────────── */
+
+.waveform-canvas {
+  width: 100%;
+  height: 60px;
+  margin-top: 8px;
+  border-radius: 6px;
+  background: rgba(255,255,255,0.05);
+}
+
+.boat-window-audio,
+.saved-audio {
+  width: 100%;
+  margin-top: 8px;
+  border-radius: 6px;
+}
+
+.record-btn       { width: 55px; height: 55px; }
+.accept-discard-btn { width: 40px; height: 40px; }
+
+/* ── Scroll Hint ─────────────────────────────────────────────────────────── */
+
+.scroll-hint { display: none; }
+
+/* ── Mobile ──────────────────────────────────────────────────────────────── */
 
 @media (max-width: 768px) {
+
   body {
-    overflow-x: scroll;
-    overflow-y: scroll;          /* enable vertical scrolling too */
-    width: 300vw;
-    min-height: 200vh;           /* canvas is 2x the screen height */
     position: relative;
+    overflow-x: scroll;
+    overflow-y: scroll;
+    width: 300vw;
+    min-height: 200vh;
   }
 
-  /* Background stretches with the full canvas */
   .gif-background {
-    position: absolute;          /* scrolls with the page */
+    position: absolute;
     width: 300vw;
-    height: 200vh;               /* matches body height */
-    z-index: -1;
+    height: 200vh;
   }
 
   .gif-background .gif {
     width: 300vw;
-    height: 70%;                 /* each gif takes up half the canvas height */
+    height: 70%;
     object-fit: cover;
   }
 
   .gif-title {
-    position: fixed;            /* stays on screen while scrolling */
-    z-index: 99;
+    position: fixed;
+    width: 40%;
+    min-width: 100px;
   }
 
-  /* Smaller audio controls */
   .audio-controls {
-    flex-direction: row;   /* mute button goes below the slider */
+    flex-direction: row;
     align-items: center;
     top: 2px;
+    right: 10px;
   }
 
   .mute-btn {
     width: 55px;
     height: 55px;
-    right: 110px;
-    position: fixed;
   }
 
-  #volume-bar {       
+  #volume-bar {
     writing-mode: horizontal-tb;
     direction: ltr;
     width: 60px;
-    height: 80px;
     accent-color: rgb(46, 185, 240);
-    cursor: pointer;
   }
 
-  /* Smaller add button */
-  .add-btn {
-    bottom: 10px;
-    right: 10px;
-    width: 70px;
-    height: 70px;
-    position: fixed;
-  }
-
-  /* Smaller info button */
-  .info-btn {
-    bottom: 100px;
-    right: 10px;
-    width: 70px;
-    height: 70px;
-    position: fixed;
-  }
-
-  /* Smaller library button */
+  .add-btn,
+  .info-btn,
   .library-btn {
-    bottom: 190px;
+    position: fixed;
     right: 10px;
     width: 70px;
     height: 70px;
-    position: fixed;
   }
 
-  /* Boat window fits screen */
+  .add-btn     { bottom: 10px; }
+  .info-btn    { bottom: 190px; }
+  .library-btn { bottom: 100px; }
+
+  [data-boat-id] {
+    position: absolute !important;
+  }
+
   .boat-window {
     width: 92vw;
     left: 4vw !important;
@@ -602,61 +508,18 @@ body {
     padding: 14px;
   }
 
-  .song-title {
-    font-size: 0.9rem;
-  }
+  .song-title      { font-size: 0.9rem; }
+  .song-route      { font-size: 0.7rem; }
+  .song-title-icons img { width: 28px; height: 28px; }
+  .boat-window-icons img[title="Close"] { width: 22px; height: 22px; }
+  .record-btn      { width: 60px; height: 60px; }
+  .accept-discard-btn { width: 40px; height: 40px; }
+  .saved-audio     { width: 100%; }
 
-  .song-route {
-    font-size: 0.7rem;
-  }
+  .dialogue  { width: 90vw; padding: 20px; }
+  .boat-option { width: 40px; height: 40px; }
+  .info-window { width: 90vw; padding: 20px; }
 
-  .song-title-icons img {
-    width: 28px;
-    height: 28px;
-  }
-
-  .boat-window-icons img[title="Close"] {
-    width: 22px;
-    height: 22px;
-  }
-
-  .record-btn {
-    width: 60px;
-    height: 60px;
-  }
-
-  .accept-discard-btn {
-    width: 40px;
-    height: 40px;
-  }
-
-  .saved-audio {
-    width: 100%;
-  }
-
-  /* Dialogue fits screen */
-  .dialogue {
-    width: 90vw;
-    padding: 20px;
-  }
-
-  .boat-option {
-    width: 40px;
-    height: 40px;
-  }
-
-  /* Info window fits screen */
-  .info-window {
-    width: 90vw;
-    padding: 20px;
-  }
-}
-
-.scroll-hint {
-  display: none;
-}
-
-@media (max-width: 768px) {
   .scroll-hint {
     display: block;
     position: fixed;
@@ -671,14 +534,16 @@ body {
     animation: fadeHint 3s ease forwards;
     animation-delay: 2s;
   }
+
+  @keyframes fadeHint {
+    0%   { opacity: 1; }
+    100% { opacity: 0; }
+  }
 }
 
-@media (max-width: 768px) {
-  body {
-    position: relative;
-  }
-
-  [data-boat-id] {
-    position: absolute !important;  /* scrolls with the canvas instead of staying fixed */
+@media (max-width: 480px) {
+  .gif-title {
+    width: 50%;
+    min-width: 100px;
   }
 }
