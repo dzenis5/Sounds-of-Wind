@@ -303,6 +303,61 @@ body {
   display: block;
 }
 
+.audio-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.audio-row .saved-audio {
+  flex: 1;
+  margin-top: 0;
+}
+
+.delete-audio-btn {
+  display: none;
+  width: 20px;
+  height: 20px;
+  background: rgba(200, 50, 50, 0.9);
+  color: white;
+  border-radius: 50%;
+  font-size: 0.6rem;
+  text-align: center;
+  line-height: 20px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.comment-item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.delete-comment-btn {
+  display: none;
+  width: 18px;
+  height: 18px;
+  background: rgba(200, 50, 50, 0.9);
+  color: white;
+  border-radius: 50%;
+  font-size: 0.6rem;
+  text-align: center;
+  line-height: 18px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+/* Show delete buttons only in moderator mode */
+.moderator-mode .delete-audio-btn,
+.moderator-mode .delete-comment-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 /* ── Boat Window ─────────────────────────────────────────────────────────── */
 
 .boat-window {
