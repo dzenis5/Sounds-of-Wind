@@ -1,8 +1,3 @@
-body {
-  font-family: sans-serif;
-  margin: 0;
-  padding: 20px;
-}
 
 * {
   margin: 0;
@@ -11,6 +6,9 @@ body {
 }
 
 body {
+  font-family: sans-serif;
+  margin: 0;
+  padding: 0; /* was 20px — this was the culprit */
   min-height: 100vh;
   overflow-x: hidden;
   background-color: #0a0a2e;
@@ -719,35 +717,38 @@ body {
 
 
 @media (max-width: 768px) {
-
-  /* Grid becomes 2 columns on mobile */
+   
   .library-grid {
     grid-template-columns: repeat(2, 1fr);
     margin-top: 120px;
     padding: 10px;
     gap: 12px;
   }
-
+  
   .library-grid {
     overflow: visible !important;
   }
-  
-  .boat-card-gif {
-    width: 80px;
-    height: 80px;
+
+  /* All fixed buttons: pull them closer to screen edge */
+  .home-btn {
+    top: 8px;
+    right: 8px;        /* was 10px — fine, but be consistent */
+    width: 55px;
+    height: 55px;
   }
 
-  .boat-card-song {
-    font-size: 0.75rem;
+  .info-btn {
+    bottom: 80px;
+    right: 8px;
+    width: 55px;
+    height: 55px;
   }
 
-  .boat-card-route {
-    font-size: 0.6rem;
-  }
-
-  /* Panel goes full width on mobile */
-  .boat-panel-inline {
-    padding: 12px;
+  .add-btn {
+    bottom: 12px;
+    right: 8px;
+    width: 55px;
+    height: 55px;
   }
 
   /* Stack comment and recordings vertically */
@@ -757,74 +758,12 @@ body {
 
   .comment-section {
     width: 100%;
-    max-height: 200px;
+    max-height: none;
   }
 
-  .panel-right {
-    width: 100%;
-  }
-
-  .boat-window {
-    width: 100%;
+  .boat-panel-inline {
+    max-height: none !important;
+    overflow-y: visible !important;
     padding: 12px;
-  }
-
-  /* Smaller buttons */
-  .add-btn {
-    bottom: 10px;
-    right: 10px;
-    width: 70px;
-    height: 70px;
-  }
-
-  .info-btn {
-    bottom: 100px;
-    right: 10px;
-    width: 70px;
-    height: 70px;
-  }
-
-  .home-btn {
-    top: 10px;
-    right: 10px;
-    width: 70px;
-    height: 70px;
-  }
-
-  /* Title gif smaller */
-  .gif-title {
-    width: 40%;
-    height: auto;
-  }
-
-  /* Dialogue fits screen */
-  .dialogue {
-    width: 90vw;
-    padding: 20px;
-  }
-
-  .boat-option {
-    width: 40px;
-    height: 40px;
-  }
-
-  .info-window {
-    width: 90vw;
-    padding: 20px;
-  }
-
-  .record-btn {
-    width: 55px;
-    height: 55px;
-  }
-
-  .accept-discard-btn {
-    width: 36px;
-    height: 36px;
-  }
-
-  .song-title-icons img {
-    width: 28px;
-    height: 28px;
   }
 }
