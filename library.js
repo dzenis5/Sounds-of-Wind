@@ -754,6 +754,6 @@ body {
 
   .comment-section {
     width: 100%;
-    max-height: 200px;
+    max-height: none;
   }
 }
