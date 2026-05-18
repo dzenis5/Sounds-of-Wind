@@ -91,12 +91,11 @@ function openDialogue() {
   overlay.innerHTML = `
     <div class="dialogue">
       <h2>Add a Boat</h2>
-      <label>Song Name</label>
       <input type="text" id="input-song" placeholder="Enter song name">
       <label>Starting Location</label>
-      <input type="text" id="input-from" placeholder="Enter starting location">
+      <input type="text" id="input-from" placeholder="Enter song origin">
       <label>Destination</label>
-      <input type="text" id="input-to" placeholder="Enter destination">
+      <input type="text" id="input-to" placeholder="Enter your current location">
       <label>Choose a Boat</label>
       <div class="boat-selector">
         <img src="boat/blue_boat.gif"   class="boat-option" data-boat="blue_boat.gif"   title="Blue">
