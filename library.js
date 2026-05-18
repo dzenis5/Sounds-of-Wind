@@ -1,8 +1,45 @@
- function openHome() {
+// ── Navigation ────────────────────────────────────────────────────────────
+
+function openHome() {
   window.location.href = 'index.html';
 }
 
-console.log('library.js loaded');
+// ── Moderator Mode ────────────────────────────────────────────────────────
+
+let moderatorMode = false;
+const MODERATOR_PASSWORD = 'diginat';
+
+document.addEventListener('keydown', function(e) {
+  if (e.ctrlKey && e.shiftKey && e.key === 'M') {
+    if (moderatorMode) {
+      moderatorMode = false;
+      document.body.classList.remove('moderator-mode');
+    } else {
+      const input = prompt('Enter moderator password:');
+      if (input === null) return;
+      if (input === MODERATOR_PASSWORD) {
+        moderatorMode = true;
+        document.body.classList.add('moderator-mode');
+      } else {
+        alert('Incorrect password.');
+      }
+    }
+  }
+});
+
+// ── Image Retry ───────────────────────────────────────────────────────────
+
+document.addEventListener('DOMContentLoaded', function() {
+  document.querySelectorAll('img').forEach(img => {
+    if (!img.complete || img.naturalWidth === 0) {
+      const src = img.src;
+      img.src = ''; img.src = src;
+    }
+  });
+});
+
+// ── Library Load ──────────────────────────────────────────────────────────
+
 const allBoats = [];
 
 async function loadLibrary() {
@@ -11,7 +48,6 @@ async function loadLibrary() {
   allBoats.length = 0;
 
   if (!window.db || !window.fsGetDocs) {
-    console.error('Firebase not ready');
     grid.innerHTML = '<p class="loading-text">Could not connect to database.</p>';
     return;
   }
@@ -25,8 +61,11 @@ async function loadLibrary() {
     }
 
     snapshot.forEach(docSnap => {
-      const boat = docSnap.data();
-      boat.audios = Object.values(boat.audios || {});
+      const boat    = docSnap.data();
+      boat.audioMap = typeof boat.audios === 'object' && !Array.isArray(boat.audios)
+        ? boat.audios
+        : {};
+      boat.audios   = Object.values(boat.audioMap);
       allBoats.push(boat);
 
       const card = document.createElement('div');
@@ -36,11 +75,8 @@ async function loadLibrary() {
         <img class="boat-card-gif" src="boat/${boat.boatFile}" alt="${boat.song}">
         <div class="boat-card-route">From ${boat.from} to ${boat.to}</div>
       `;
-
-      card.addEventListener('click', function() {
-        openBoatPanel(boat, this);
-      });
-      grid.appendChild(card);  
+      card.addEventListener('click', function() { openBoatPanel(boat, this); });
+      grid.appendChild(card);
     });
 
   } catch(err) {
@@ -49,89 +85,89 @@ async function loadLibrary() {
   }
 }
 
-// Wait for Firebase then load
 if (window.firebaseReady) {
   loadLibrary();
 } else {
   window.addEventListener('firebaseReady', () => loadLibrary());
 }
 
+// ── Boat Panel ────────────────────────────────────────────────────────────
+
 function openBoatPanel(boat, cardEl) {
   const existing = document.getElementById('boat-panel');
   if (existing) existing.remove();
 
   const panel = document.createElement('div');
-  panel.id = 'boat-panel';
-  panel.classList.add('boat-panel-inline');
-  panel.dataset.boatId    = boat.id;
+  panel.id              = 'boat-panel';
+  panel.dataset.boatId  = boat.id;
   panel.dataset.choirMode = 'false';
+  panel.classList.add('boat-panel-inline');
+
+  const audioHTML = Object.keys(boat.audioMap || {}).length === 0
+    ? '<p style="opacity:0.6;font-size:0.85rem;margin-top:8px;">No recordings yet.</p>'
+    : Object.entries(boat.audioMap).map(([audioId, src]) => `
+        <div class="audio-row" data-audio-id="${audioId}">
+          <audio class="saved-audio" src="${src}" controls></audio>
+          <div class="delete-audio-btn" onclick="deleteAudio('${audioId}', this)">✕</div>
+        </div>
+      `).join('');
 
   panel.innerHTML = `
+    <img src="icons/discard.png" class="panel-close-btn" title="Close"
+      onclick="document.getElementById('boat-panel').remove()">
 
-  <!-- Close button pinned to top right of whole panel -->
-  <img src="icons/discard.png" class="panel-close-btn" title="Close" onclick="document.getElementById('boat-panel').remove()">
+    <div class="panel-layout">
 
-  <div class="panel-layout">
-
-    <!-- Right: comment section -->
-    <div class="comment-section">
-      <div class="comment-title">Comments</div>
-      <div class="comment-list" id="comment-list-${boat.id}">
-        <p class="loading-text">Loading comments...</p>
-      </div>
-      <div class="comment-input-row">
-        <input type="text" id="comment-name" placeholder="Your name" class="comment-input">
-        <input type="text" id="comment-text" placeholder="Add a comment..." class="comment-input">
-        <button onclick="submitComment('${boat.id}')" class="comment-submit">Post</button>
-      </div>
-    </div>
-
-    <!-- Left: recordings and controls -->
-    <div class="panel-right">
-      <div class="boat-window-header">
-        <div class="boat-window-info">
-          <div class="song-title-row">
-            <div class="song-title">${boat.song}</div>
-            <div class="song-title-icons">
-              <img src="icons/play.png" title="Play" id="play-btn" onclick="togglePlayAll()">
-              <img src="icons/solo.png" title="Solo" id="choir-btn" onclick="toggleChoir()">
+      <div class="panel-right">
+        <div class="boat-window-header">
+          <div class="boat-window-info">
+            <div class="song-title-row">
+              <div class="song-title">${boat.song}</div>
+              <div class="song-title-icons">
+                <img src="icons/play.png" title="Play" id="play-btn" onclick="togglePlayAll()">
+                <img src="icons/solo.png" title="Solo" id="choir-btn" onclick="toggleChoir()">
+              </div>
             </div>
-          </div>
-          <div class="song-route">From ${boat.from} to ${boat.to}</div>
-          <div class="boat-window-hint" id="record-hint">Press record to add a song</div>
-          <div id="saved-audio-container">
-            ${boat.audios.length === 0
-              ? '<p style="opacity:0.6; font-size:0.85rem; margin-top:8px;">No recordings yet.</p>'
-              : boat.audios.map(src => `<audio controls src="${src}" class="saved-audio"></audio>`).join('')
-            }
+            <div class="song-route">From ${boat.from} to ${boat.to}</div>
+            <div class="boat-window-hint" id="record-hint">Press record to add a song</div>
+            <div id="saved-audio-container">${audioHTML}</div>
           </div>
         </div>
+        <canvas class="waveform-canvas" id="waveform-canvas" style="display:none;"></canvas>
+        <div class="boat-window-footer" id="boat-footer">
+          <img src="icons/record.png" class="record-btn" title="Record" onclick="startRecording()">
+        </div>
       </div>
-      <canvas class="waveform-canvas" id="waveform-canvas" style="display:none;"></canvas>
-      <div class="boat-window-footer" id="boat-footer">
-        <img src="icons/record.png" class="record-btn" title="Record" onclick="startRecording()">
+
+      <div class="comment-section">
+        <div class="comment-title">Comments</div>
+        <div class="comment-list" id="comment-list-${boat.id}">
+          <p class="loading-text">Loading comments...</p>
+        </div>
+        <div class="comment-input-row">
+          <input type="text" id="comment-name" placeholder="Your name" class="comment-input">
+          <input type="text" id="comment-text" placeholder="Add a comment..." class="comment-input">
+          <button onclick="submitComment('${boat.id}')" class="comment-submit">Post</button>
+        </div>
       </div>
+
     </div>
+  `;
 
-  </div>
-`;
-
-  // Find which row the clicked card is in and insert after the last card in that row
+  // Insert after last card in the same row
   const grid     = document.getElementById('library-grid');
   const cards    = Array.from(grid.querySelectorAll('.boat-card'));
   const clickedY = cardEl.getBoundingClientRect().top;
-
-  // Find the last card in the same row (same top position)
   let lastInRow  = cardEl;
   cards.forEach(card => {
-    if (Math.abs(card.getBoundingClientRect().top - clickedY) < 5) {
-      lastInRow = card;
-    }
+    if (Math.abs(card.getBoundingClientRect().top - clickedY) < 5) lastInRow = card;
   });
-
   lastInRow.insertAdjacentElement('afterend', panel);
+
   loadComments(boat.id);
 }
+
+// ── Recording ─────────────────────────────────────────────────────────────
 
 let mediaRecorder = null;
 let audioChunks   = [];
@@ -141,31 +177,17 @@ let audioCtx      = null;
 let playAllActive = false;
 
 function startRecording() {
-  const win     = document.getElementById('boat-window');
-  const isChoir = win && win.dataset.choirMode === 'true';
+  const panel   = document.getElementById('boat-panel');
+  const isChoir = panel && panel.dataset.choirMode === 'true';
 
-  // Use different mic constraints for choir vs solo mode
   const micConstraints = isChoir
-    ? {
-        audio: {
-          echoCancellation: false,
-          noiseSuppression: false,
-          autoGainControl:  false,
-        }
-      }
-    : {
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl:  true,
-        }
-      };
+    ? { audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } }
+    : { audio: { echoCancellation: true,  noiseSuppression: true,  autoGainControl: true  } };
 
   navigator.mediaDevices.getUserMedia(micConstraints).then(function(stream) {
     audioCtx = new AudioContext();
     analyser = audioCtx.createAnalyser();
-    const source = audioCtx.createMediaStreamSource(stream);
-    source.connect(analyser);
+    audioCtx.createMediaStreamSource(stream).connect(analyser);
     analyser.fftSize = 256;
 
     if (isChoir) {
@@ -210,14 +232,12 @@ function startRecording() {
         <img src="icons/accept.png"  class="accept-discard-btn" title="Accept"  onclick="acceptRecording('${url}')">
         <img src="icons/discard.png" class="accept-discard-btn" title="Discard" onclick="discardRecording()">
       `;
-      document.getElementById('boat-window').appendChild(acceptDiscard);
+      document.getElementById('boat-panel').appendChild(acceptDiscard);
       updatePreviewChoir();
     };
 
     mediaRecorder.start();
-  }).catch(function() {
-    alert('Microphone access was denied.');
-  });
+  }).catch(() => alert('Microphone access was denied.'));
 }
 
 function stopRecording() {
@@ -234,32 +254,34 @@ function acceptRecording(url) {
   fetch(url).then(r => r.blob()).then(blob => {
     const reader = new FileReader();
     reader.onloadend = async function() {
-      const base64 = reader.result;
+      const base64    = reader.result;
+      const audioId   = Date.now().toString();
       const container = document.getElementById('saved-audio-container');
 
-      // Remove "no recordings" text if present
-      const empty = container.querySelector('p');
-      if (empty) empty.remove();
+      container.querySelector('p')?.remove();
 
-      const a = document.createElement('audio');
-      a.controls = true;
-      a.src = base64;
-      a.style.cssText = 'width:100%; margin-top:8px;';
-      container.appendChild(a);
+      const audioRow = document.createElement('div');
+      audioRow.classList.add('audio-row');
+      audioRow.dataset.audioId = audioId;
+      audioRow.innerHTML = `
+        <audio class="saved-audio" src="${base64}" controls></audio>
+        <div class="delete-audio-btn" onclick="deleteAudio('${audioId}', this)">✕</div>
+      `;
+      container.appendChild(audioRow);
 
-      // Save to Firestore
       const panel  = document.getElementById('boat-panel');
       const boatId = panel?.dataset.boatId;
       if (boatId) {
         const boat = allBoats.find(b => b.id === boatId);
         if (boat) {
-          boat.audios.push(base64);
-          const data = { ...boat, audios: Object.fromEntries(boat.audios.map((a, i) => [i, a])) };
+          if (!boat.audioMap) boat.audioMap = {};
+          boat.audioMap[audioId] = base64;
+          boat.audios = Object.values(boat.audioMap);
           try {
-            await window.fsSetDoc(window.fsDoc(window.db, 'boats', boatId), data);
-          } catch(err) {
-            console.error('Save error:', err);
-          }
+            await window.fsSetDoc(window.fsDoc(window.db, 'boats', boatId), {
+              ...boat, audios: boat.audioMap
+            });
+          } catch(err) { console.error('Save error:', err); }
         }
       }
     };
@@ -299,6 +321,8 @@ function drawWaveform(analyser, canvas) {
   draw();
 }
 
+// ── Choir & Playback ──────────────────────────────────────────────────────
+
 function toggleChoir() {
   const panel = document.getElementById('boat-panel');
   if (!panel) return;
@@ -307,16 +331,13 @@ function toggleChoir() {
   const btn = document.getElementById('choir-btn');
   btn.src   = isChoir ? 'icons/solo.png'  : 'icons/choir.png';
   btn.title = isChoir ? 'Solo'            : 'Choir';
-
-  // Show headphone tip when entering choir mode
   if (!isChoir) {
     const hint = document.getElementById('record-hint');
-    if (hint) hint.textContent = 'Tip: use headphones for best choir recording';
-    setTimeout(() => {
-      if (hint) hint.textContent = 'Press record to add a song';
-    }, 4000);
+    if (hint) {
+      hint.textContent = 'Tip: use headphones for best choir recording';
+      setTimeout(() => { hint.textContent = 'Press record to add a song'; }, 4000);
+    }
   }
-
   updatePreviewChoir();
 }
 
@@ -357,52 +378,50 @@ function togglePlayAll() {
   }
 }
 
+// ── Comments ──────────────────────────────────────────────────────────────
+
 async function loadComments(boatId) {
   const list = document.getElementById(`comment-list-${boatId}`);
   if (!list) return;
-
   try {
     const snapshot = await window.fsGetDocs(
       window.fsCollection(window.db, 'boats', boatId, 'comments')
     );
-
     if (snapshot.empty) {
-      list.innerHTML = '<p style="opacity:0.5; font-size:0.8rem;">No comments yet.</p>';
+      list.innerHTML = '<p style="opacity:0.5;font-size:0.8rem;">No comments yet.</p>';
       return;
     }
-
     list.innerHTML = '';
-    snapshot.forEach(doc => {
-      const c = doc.data();
-      const item = document.createElement('div');
+    snapshot.forEach(docSnap => {
+      const c         = docSnap.data();
+      const commentId = docSnap.id;
+      const item      = document.createElement('div');
       item.classList.add('comment-item');
+      item.dataset.commentId = commentId;
       item.innerHTML = `
-        <span class="comment-author">${c.name}</span>
+        <div class="comment-item-header">
+          <span class="comment-author">${c.name}</span>
+          <div class="delete-comment-btn" onclick="deleteComment('${boatId}', '${commentId}', this)">✕</div>
+        </div>
         <span class="comment-text">${c.text}</span>
       `;
       list.appendChild(item);
     });
-  } catch(err) {
-    console.error('Error loading comments:', err);
-  }
+  } catch(err) { console.error('Error loading comments:', err); }
 }
 
 async function submitComment(boatId) {
   const nameEl = document.getElementById('comment-name');
   const textEl = document.getElementById('comment-text');
-
-  const name = nameEl.value.trim();
-  const text = textEl.value.trim();
-
+  const name   = nameEl.value.trim();
+  const text   = textEl.value.trim();
   if (!name || !text) { alert('Please enter your name and a comment.'); return; }
-
   try {
     const commentId = Date.now().toString();
     await window.fsSetDoc(
       window.fsDoc(window.db, 'boats', boatId, 'comments', commentId),
       { name, text, timestamp: commentId }
     );
-
     nameEl.value = '';
     textEl.value = '';
     loadComments(boatId);
@@ -411,6 +430,39 @@ async function submitComment(boatId) {
     alert('Could not post comment.');
   }
 }
+
+async function deleteComment(boatId, commentId, btn) {
+  if (!moderatorMode) return;
+  if (!confirm('Delete this comment?')) return;
+  try {
+    await window.fsDeleteDoc(window.fsDoc(window.db, 'boats', boatId, 'comments', commentId));
+    btn.closest('.comment-item').remove();
+  } catch(err) { console.error('Error deleting comment:', err); }
+}
+
+async function deleteAudio(audioId, btn) {
+  if (!moderatorMode) return;
+  if (!confirm('Delete this recording?')) return;
+  const row    = btn.closest('.audio-row');
+  const panel  = document.getElementById('boat-panel');
+  const boatId = panel?.dataset.boatId;
+  if (boatId) {
+    const boat = allBoats.find(b => b.id === boatId);
+    if (boat) {
+      if (!boat.audioMap) boat.audioMap = {};
+      delete boat.audioMap[audioId];
+      boat.audios = Object.values(boat.audioMap);
+      try {
+        await window.fsSetDoc(window.fsDoc(window.db, 'boats', boatId), {
+          ...boat, audios: boat.audioMap
+        });
+        row.remove();
+      } catch(err) { console.error('Error deleting audio:', err); }
+    }
+  }
+}
+
+// ── Info Window ───────────────────────────────────────────────────────────
 
 function toggleInfo() {
   const existing = document.getElementById('info-window');
@@ -441,10 +493,14 @@ HOW TO USE:
   document.body.appendChild(win);
 }
 
+// ── Add Boat ──────────────────────────────────────────────────────────────
+
 function handleAdd() {
   const addIcon = document.getElementById('add-icon');
-  addIcon.src = 'icons/add.png';
-  setTimeout(function() { addIcon.src = 'icons/add.png'; }, 300);
+  if (addIcon) {
+    addIcon.src = 'add1.png';
+    setTimeout(() => { addIcon.src = 'add.png'; }, 300);
+  }
   openDialogue();
 }
 
@@ -458,9 +514,9 @@ function openDialogue() {
       <label>Song Name</label>
       <input type="text" id="input-song" placeholder="Enter song name">
       <label>Starting Location</label>
-      <input type="text" id="input-from" placeholder="Enter starting location">
+      <input type="text" id="input-from" placeholder="Enter song origin">
       <label>Destination</label>
-      <input type="text" id="input-to" placeholder="Enter destination">
+      <input type="text" id="input-to" placeholder="Enter your current location">
       <label>Choose a Boat</label>
       <div class="boat-selector">
         <img src="boat/blue_boat.gif"   class="boat-option" data-boat="blue_boat.gif"   title="Blue">
@@ -504,40 +560,19 @@ async function submitBoat() {
   const boatFile = selected.getAttribute('data-boat');
   closeDialogue();
 
-  // Save directly to Firestore with a random position for index page
-  const boatId = Date.now().toString();
+  const boatId  = Date.now().toString();
   const newBoat = {
-    id:       boatId,
-    song,
-    from,
-    to,
-    boatFile,
-    x:        Math.random() * 600 + 100,   // random position for index page
-    y:        Math.random() * 300 + 100,
-    audios:   {}
+    id: boatId, song, from, to, boatFile,
+    x: Math.random() * 600 + 100,
+    y: Math.random() * 300 + 100,
+    audios: {}
   };
 
   try {
     await window.fsSetDoc(window.fsDoc(window.db, 'boats', boatId), newBoat);
-    // Reload library to show the new boat
     loadLibrary();
   } catch(err) {
     console.error('Error saving boat:', err);
     alert('Could not save boat.');
   }
-}
-
-// Retry loading images that failed
-document.addEventListener('DOMContentLoaded', function() {
-  retryBrokenImages();
-});
-
-function retryBrokenImages() {
-  document.querySelectorAll('img').forEach(img => {
-    if (!img.complete || img.naturalWidth === 0) {
-      const src = img.src;
-      img.src = '';
-      img.src = src;
-    }
-  });
 }
