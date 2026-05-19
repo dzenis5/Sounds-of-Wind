@@ -234,8 +234,8 @@ function buildWrapper(song, from, to, boatFile, x, y, boatId) {
 function spawnBoat(song, from, to, boatFile) {
   const padding  = 10;
   const isMobile = window.innerWidth <= 768;
-  const canvasW  = isMobile ? window.innerWidth  * 3 : window.innerWidth;
-  const canvasH  = isMobile ? window.innerHeight * 2 : window.innerHeight;
+  const canvasW  = window.innerWidth;
+  const canvasH  = window.innerHeight;
   const maxY     = canvasH * 0.90;
   const minY     = 100;
 
@@ -270,8 +270,8 @@ function spawnBoat(song, from, to, boatFile) {
 
 function repositionBoats() {
   const isMobile = window.innerWidth <= 768;
-  const canvasW  = isMobile ? window.innerWidth  * 3 : window.innerWidth;
-  const canvasH  = isMobile ? window.innerHeight * 2 : window.innerHeight;
+  const canvasW  = window.innerWidth;
+  const canvasH  = window.innerHeight;
 
   document.querySelectorAll('[data-boat-id]').forEach(wrapper => {
     wrapper.style.position = isMobile ? 'absolute' : 'fixed';
@@ -682,8 +682,8 @@ function makeDraggable(wrapper) {
     if (Math.abs(dx) > 3 || Math.abs(dy) > 3) wrapper._dragMoved = true;
     if (!wrapper._dragMoved) return;
     const isMobile = window.innerWidth <= 768;
-    const canvasW  = isMobile ? window.innerWidth  * 3 : window.innerWidth;
-    const canvasH  = isMobile ? window.innerHeight * 2 : window.innerHeight;
+    const canvasW  = window.innerWidth;
+    const canvasH  = window.innerHeight;
     wrapper.style.left = Math.max(0, Math.min(canvasW - wrapper.offsetWidth,  origX + dx)) + 'px';
     wrapper.style.top  = Math.max(0, Math.min(canvasH - wrapper.offsetHeight, origY + dy)) + 'px';
   });
