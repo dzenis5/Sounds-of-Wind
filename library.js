@@ -180,6 +180,16 @@ let analyser      = null;
 let audioCtx      = null;
 let playAllActive = false;
 
+// Add this before startRecording()
+async function unlockAudio() {
+  if (!audioCtx) {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  }
+  if (audioCtx.state === 'suspended') {
+    await audioCtx.resume();
+  }
+}
+
 function startRecording() {
   const panel   = document.getElementById('boat-panel');
   const isChoir = panel && panel.dataset.choirMode === 'true';
@@ -189,7 +199,7 @@ function startRecording() {
     : { audio: { echoCancellation: true,  noiseSuppression: true,  autoGainControl: true  } };
 
   navigator.mediaDevices.getUserMedia(micConstraints).then(function(stream) {
-    audioCtx = new AudioContext();
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     analyser = audioCtx.createAnalyser();
     audioCtx.createMediaStreamSource(stream).connect(analyser);
     analyser.fftSize = 256;
@@ -209,8 +219,11 @@ function startRecording() {
       <img src="icons/stop.png" class="record-btn" title="Stop" onclick="stopRecording()">
     `;
 
+    const mimeType = MediaRecorder.isTypeSupported('audio/mp4')
+      ? 'audio/mp4'
+      : 'audio/webm';
     audioChunks   = [];
-    mediaRecorder = new MediaRecorder(stream);
+    mediaRecorder = new MediaRecorder(stream, { mimeType });
     mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
     mediaRecorder.onstop = function() {
       stream.getTracks().forEach(t => t.stop());
@@ -221,7 +234,7 @@ function startRecording() {
         a.pause(); a.currentTime = 0;
       });
 
-      const blob = new Blob(audioChunks, { type: 'audio/webm' });
+      const blob = new Blob(audioChunks, { type: mimeType });
       const url  = URL.createObjectURL(blob);
 
       document.getElementById('waveform-canvas').style.display = 'none';
