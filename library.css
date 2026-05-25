@@ -44,18 +44,18 @@ body {
   right: 50px;
   z-index: 100;
   cursor: pointer;
-  width: 150px;
-  height: 150px;
+  width: 100px;
+  height: 100px;
 }
 
 .info-btn {
   position: fixed;
-  bottom: 150px;
+  bottom: 110px;
   right: 50px;
   z-index: 100;
   cursor: pointer;
-  width: 150px;
-  height: 150px;
+  width: 100px;
+  height: 100px;
 }
 
 .add-btn {
@@ -64,8 +64,8 @@ body {
   right: 50px;
   z-index: 100;
   cursor: pointer;
-  width: 150px;
-  height: 150px;
+  width: 100px;
+  height: 100px;
 }
 
 .home-btn img,
