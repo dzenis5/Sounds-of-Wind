@@ -99,13 +99,13 @@ body {
   right: 50px;
   z-index: 100;
   cursor: pointer;
-  width: 150px;
-  height: 150px;
+  width: 100px;
+  height: 100px;
 }
 
 .add-btn     { bottom: 20px; }
-.info-btn    { bottom: 280px; }
-.library-btn { bottom: 150px; }
+.info-btn    { bottom: 200px; }
+.library-btn { bottom: 110px; }
 
 .add-btn img,
 .info-btn img,
