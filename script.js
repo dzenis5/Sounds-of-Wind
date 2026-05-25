@@ -4,10 +4,20 @@ const audio     = document.getElementById('bg-audio');
 const icon      = document.getElementById('mute-icon');
 const volumeBar = document.getElementById('volume-bar');
 
-document.body.addEventListener('click', function startAudio() {
-  audio.play();
+// iOS requires both click and touchstart
+function startAudio() {
+  const playPromise = audio.play();
+  if (playPromise !== undefined) {
+    playPromise.catch(() => {
+      // Autoplay blocked — wait for next interaction
+    });
+  }
   document.body.removeEventListener('click', startAudio);
-}, { once: true });
+  document.body.removeEventListener('touchstart', startAudio);
+}
+
+document.body.addEventListener('click', startAudio);
+document.body.addEventListener('touchstart', startAudio, { passive: true });
 
 function getVolumeIcon(volume) {
   if (volume == 0 || audio.muted) return 'icons/mute.png';
@@ -400,8 +410,9 @@ function startRecording() {
     ? { audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } }
     : { audio: { echoCancellation: true,  noiseSuppression: true,  autoGainControl: true  } };
 
-  navigator.mediaDevices.getUserMedia(micConstraints).then(function(stream) {
+    navigator.mediaDevices.getUserMedia(micConstraints).then(async function(stream) {
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    await audioCtx.resume(); // iOS requires this
     analyser = audioCtx.createAnalyser();
     audioCtx.createMediaStreamSource(stream).connect(analyser);
     analyser.fftSize = 256;
