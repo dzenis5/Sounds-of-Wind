@@ -198,8 +198,9 @@ function startRecording() {
     ? { audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } }
     : { audio: { echoCancellation: true,  noiseSuppression: true,  autoGainControl: true  } };
 
-  navigator.mediaDevices.getUserMedia(micConstraints).then(function(stream) {
+    navigator.mediaDevices.getUserMedia(micConstraints).then(async function(stream) {
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    await audioCtx.resume(); // iOS requires this
     analyser = audioCtx.createAnalyser();
     audioCtx.createMediaStreamSource(stream).connect(analyser);
     analyser.fftSize = 256;
