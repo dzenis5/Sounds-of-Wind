@@ -6,36 +6,16 @@
   <title>Library – Sounds of Wind</title>
   <link rel="stylesheet" href="library.css">
 
-  <script type="module">
-  import { initializeApp }
-    from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-  import { getFirestore, collection, doc, setDoc, getDocs, deleteDoc }
-    from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-
-  const firebaseConfig = {
-  apiKey: "AIzaSyB1B2PBE3VMaCL6y3ethH0A9VD_tnPRRaA",
-  authDomain: "sound-of-wind.firebaseapp.com",
-  databaseURL: "https://sound-of-wind-default-rtdb.europe-west1.firebasedatabase.app",
-  projectId: "sound-of-wind",
-  storageBucket: "sound-of-wind.firebasestorage.app",
-  messagingSenderId: "75775773966",
-  appId: "1:75775773966:web:2baec76f99a33321105b5f"
-};
-
-  const app = initializeApp(firebaseConfig);
-  const db  = getFirestore(app);
-
-  window.db           = db;
-  window.fsCollection = collection;
-  window.fsDoc        = doc;
-  window.fsSetDoc     = setDoc;
-  window.fsGetDocs    = getDocs;
-  window.fsDeleteDoc  = deleteDoc;
-
-  // Signal to the rest of the page that Firebase is ready
-  window.firebaseReady = true;
-  window.dispatchEvent(new Event('firebaseReady'));
-</script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script>
+      const { createClient } = supabase;
+      window.sb = createClient(
+        'https://ldobqwmvazjgiznzkzig.supabase.co',   // ← your Project URL
+        'sb_publishable_Aw1dpxzzKNIqQOyWNNqDxA_f3pcyFWQ'                    // ← your anon/public key
+      );
+      window.supabaseReady = true;
+      window.dispatchEvent(new Event('supabaseReady'));
+    </script> 
 </head>
 <body>
 
