@@ -550,6 +550,27 @@ body {
 
 .camera-close:hover { background: rgba(255,255,255,0.3); }
 
+.camera-flip-btn {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  background: rgba(255,255,255,0.15);
+  border: none;
+  color: white;
+  font-size: 1.2rem;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
+  transition: background 0.2s;
+}
+
+.camera-flip-btn:hover { background: rgba(255,255,255,0.3); }
+
 .camera-feed--mirrored {
   transform: scaleX(-1);
 }
