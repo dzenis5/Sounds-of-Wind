@@ -108,7 +108,7 @@ function openBoatPanel(boat, cardEl) {
     <img src="icons/discard.png" class="panel-close-btn" title="Close"
       onclick="document.getElementById('boat-panel').remove()">
 
-    <div class="panel-layout">
+    <div class="panel-layout panel-layout--three">
 
       <div class="panel-right">
         <div class="boat-window-header">
@@ -143,6 +143,18 @@ function openBoatPanel(boat, cardEl) {
         </div>
       </div>
 
+       <div class="memories-section">
+        <div class="memories-title">Memories</div>
+        <div class="memories-subtext">Upload photos or videos that relate to this song</div>
+        <div class="memories-grid" id="memories-grid-${boat.id}">
+          <p class="loading-text">Loading memories...</p>
+        </div>
+        <div class="memories-upload-row">
+          <img src="icons/upload.png" class="memories-upload-icon" onclick="triggerMemoryUpload('${boat.id}')">
+          <img src="icons/camera.png" class="memories-upload-icon" onclick="openCameraPreview('${boat.id}')">
+        </div>
+      </div>
+
     </div>
   `;
 
@@ -158,6 +170,7 @@ function openBoatPanel(boat, cardEl) {
 
   loadAudioForBoat(boat.id);
   loadComments(boat.id);
+  loadMemories(boat.id);
 }
 
 async function loadAudioForBoat(boatId) {
@@ -186,6 +199,408 @@ async function loadAudioForBoat(boatId) {
     }
   } catch (err) {
     console.error('Error loading audio:', err);
+  }
+}
+
+async function loadMemories(boatId) {
+  const grid = document.getElementById(`memories-grid-${boatId}`);
+  if (!grid) return;
+  try {
+    const { data, error } = await window.sb
+      .from('memories')
+      .select('*')
+      .eq('boat_id', boatId)
+      .order('id', { ascending: true });
+    if (error) throw error;
+
+    if (!data || data.length === 0) {
+      grid.innerHTML = '<p style="opacity:0.5;font-size:0.8rem;">No memories yet.</p>';
+      return;
+    }
+    grid.innerHTML = '';
+    data.forEach((row, index) => {
+      appendMemory(grid, row.id, row.url, row.media_type, index, boatId);
+    });
+  } catch (err) {
+    console.error('Error loading memories:', err);
+  }
+}
+
+function appendMemory(grid, memoryId, url, mediaType, index, boatId) {
+  const item = document.createElement('div');
+  item.classList.add('memory-item');
+  item.dataset.memoryId = memoryId;
+  item.dataset.index = index;
+
+  const media = mediaType === 'video'
+    ? `<video src="${url}" controls class="memory-media"></video>`
+    : `<img src="${url}" class="memory-media" alt="memory">`;
+
+  item.innerHTML = `
+    ${media}
+    <div class="delete-memory-btn" onclick="deleteMemory('${memoryId}', this)">✕</div>
+  `;
+
+  item.querySelector('.memory-media').addEventListener('click', () => {
+    openLightbox(boatId, index);
+  });
+
+  grid.appendChild(item);
+}
+
+async function triggerMemoryUpload(boatId) {
+  const input  = document.createElement('input');
+  input.type   = 'file';
+  input.accept = 'image/*,video/*';
+  input.onchange = async function() {
+    const file = input.files[0];
+    if (!file) return;
+
+    const grid         = document.getElementById(`memories-grid-${boatId}`);
+    const uploadingEl  = document.createElement('p');
+    uploadingEl.style.cssText = 'font-size:0.75rem;opacity:0.6;font-style:italic;';
+    uploadingEl.textContent   = 'Uploading…';
+    grid.appendChild(uploadingEl);
+
+    try {
+      const memoryId  = Date.now().toString();
+      const ext       = file.name.split('.').pop();
+      const mediaType = file.type.startsWith('video') ? 'video' : 'image';
+      const path      = `memories/${boatId}/${memoryId}.${ext}`;
+
+      const { error: uploadError } = await window.sb.storage
+        .from('recordings')
+        .upload(path, file, { contentType: file.type });
+      if (uploadError) throw uploadError;
+
+      const { data: urlData } = window.sb.storage
+        .from('recordings')
+        .getPublicUrl(path);
+      const downloadURL = urlData.publicUrl;
+
+      const { error: dbError } = await window.sb
+        .from('memories')
+        .insert({ id: memoryId, boat_id: boatId, url: downloadURL, media_type: mediaType });
+      if (dbError) throw dbError;
+
+      uploadingEl.remove();
+      grid.querySelector('p')?.remove();
+      appendMemory(grid, memoryId, downloadURL, mediaType);
+
+    } catch (err) {
+      uploadingEl.textContent = 'Upload failed. Please try again.';
+      console.error('Memory upload error:', err);
+    }
+  };
+  input.click();
+}
+
+async function deleteMemory(memoryId, btn) {
+  if (!moderatorMode) return;
+  if (!confirm('Delete this memory?')) return;
+  const item = btn.closest('.memory-item');
+  try {
+    const media = item.querySelector('img, video');
+    if (media?.src) {
+      const parts = media.src.split('/recordings/');
+      if (parts[1]) {
+        await window.sb.storage.from('recordings').remove([decodeURIComponent(parts[1])]);
+      }
+    }
+    const { error } = await window.sb.from('memories').delete().eq('id', memoryId);
+    if (error) throw error;
+    item.remove();
+  } catch (err) {
+    console.error('Error deleting memory:', err);
+  }
+}
+
+// ── Lightbox ──────────────────────────────────────────────────────────────
+
+let lightboxBoatId  = null;
+let lightboxIndex   = 0;
+let lightboxItems   = [];
+
+async function openLightbox(boatId, startIndex) {
+  lightboxBoatId = boatId;
+
+  // Fetch all memories for this boat to build the full list
+  const { data, error } = await window.sb
+    .from('memories')
+    .select('*')
+    .eq('boat_id', boatId)
+    .order('id', { ascending: true });
+  if (error || !data) return;
+
+  lightboxItems = data;
+  lightboxIndex = startIndex;
+
+  const existing = document.getElementById('lightbox');
+  if (existing) existing.remove();
+
+  const lb = document.createElement('div');
+  lb.id = 'lightbox';
+  lb.innerHTML = `
+    <div class="lightbox-backdrop" onclick="closeLightbox()"></div>
+    <div class="lightbox-content">
+      <div id="lightbox-media-wrap"></div>
+      <button class="lightbox-arrow lightbox-arrow--left"  onclick="stepLightbox(-1)">&#8249;</button>
+      <button class="lightbox-arrow lightbox-arrow--right" onclick="stepLightbox(1)">&#8250;</button>
+      <button class="lightbox-close" onclick="closeLightbox()">✕</button>
+      <div class="lightbox-counter" id="lightbox-counter"></div>
+    </div>
+  `;
+  document.body.appendChild(lb);
+  renderLightboxMedia();
+
+  document.addEventListener('keydown', lightboxKeyHandler);
+}
+
+function renderLightboxMedia() {
+  const wrap = document.getElementById('lightbox-media-wrap');
+  if (!wrap) return;
+  const item = lightboxItems[lightboxIndex];
+  if (!item) return;
+
+  wrap.innerHTML = item.media_type === 'video'
+    ? `<video src="${item.url}" controls autoplay class="lightbox-media"></video>`
+    : `<img src="${item.url}" class="lightbox-media" alt="memory">`;
+
+  document.getElementById('lightbox-counter').textContent =
+    `${lightboxIndex + 1} / ${lightboxItems.length}`;
+
+  // Hide arrows if only one item
+  document.querySelector('.lightbox-arrow--left').style.display =
+    lightboxItems.length <= 1 ? 'none' : '';
+  document.querySelector('.lightbox-arrow--right').style.display =
+    lightboxItems.length <= 1 ? 'none' : '';
+}
+
+function stepLightbox(dir) {
+  lightboxIndex = (lightboxIndex + dir + lightboxItems.length) % lightboxItems.length;
+  renderLightboxMedia();
+}
+
+function closeLightbox() {
+  document.getElementById('lightbox')?.remove();
+  document.removeEventListener('keydown', lightboxKeyHandler);
+}
+
+function lightboxKeyHandler(e) {
+  if (e.key === 'ArrowLeft')  stepLightbox(-1);
+  if (e.key === 'ArrowRight') stepLightbox(1);
+  if (e.key === 'Escape')     closeLightbox();
+}
+
+// ── Camera Preview ────────────────────────────────────────────────────────
+
+let cameraStream        = null;
+let cameraMediaRecorder = null;
+let videoChunks         = [];
+let cameraBoatId        = null;
+
+function openCameraPreview(boatId) {
+  cameraBoatId = boatId;
+  const existing = document.getElementById('camera-preview');
+  if (existing) existing.remove();
+
+  const preview = document.createElement('div');
+  preview.id = 'camera-preview';
+  preview.innerHTML = `
+    <div class="camera-backdrop" onclick="closeCameraPreview()"></div>
+    <div class="camera-window">
+      <button class="camera-close" onclick="closeCameraPreview()">✕</button>
+      <video id="camera-feed" autoplay playsinline muted class="camera-feed"></video>
+      <canvas id="camera-canvas" style="display:none;"></canvas>
+      <img id="camera-photo-preview" style="display:none;" class="camera-feed" alt="captured">
+      <video id="camera-video-preview" style="display:none;" controls class="camera-feed"></video>
+      <div class="camera-btn-row" id="camera-btn-row">
+        <img src="icons/photo.png" class="camera-action-btn" title="Take Photo"   onclick="takePhoto()">
+        <img src="icons/video.png" class="camera-action-btn" title="Record Video" onclick="startVideoRecording()">
+      </div>
+    </div>
+  `;
+  document.body.appendChild(preview);
+  startCameraStream();
+}
+
+async function startCameraStream() {
+  try {
+    cameraStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'environment' },
+      audio: true
+    });
+    const feed = document.getElementById('camera-feed');
+    if (feed) {
+      feed.srcObject = cameraStream;
+      // Check which camera is active and mirror if front-facing
+      const track    = cameraStream.getVideoTracks()[0];
+      const settings = track.getSettings();
+      if (settings.facingMode === 'user') {
+        feed.classList.add('camera-feed--mirrored');
+      }
+    }
+  } catch (err) {
+    alert('Could not access camera.');
+    console.error(err);
+  }
+}
+
+function closeCameraPreview() {
+  if (cameraStream) {
+    cameraStream.getTracks().forEach(t => t.stop());
+    cameraStream = null;
+  }
+  if (cameraMediaRecorder && cameraMediaRecorder.state !== 'inactive') {
+    cameraMediaRecorder.stop();
+    cameraMediaRecorder = null;
+  }
+  document.getElementById('camera-preview')?.remove();
+}
+
+// ── Photo ─────────────────────────────────────────────────────────────────
+
+function takePhoto() {
+  const feed   = document.getElementById('camera-feed');
+  const canvas = document.getElementById('camera-canvas');
+  canvas.width  = feed.videoWidth;
+  canvas.height = feed.videoHeight;
+
+  const ctx         = canvas.getContext('2d');
+  const isMirrored  = feed.classList.contains('camera-feed--mirrored');
+
+  if (isMirrored) {
+    ctx.translate(canvas.width, 0);
+    ctx.scale(-1, 1);
+  }
+  ctx.drawImage(feed, 0, 0);
+
+  const photoPreview         = document.getElementById('camera-photo-preview');
+  photoPreview.src           = canvas.toDataURL('image/jpeg');
+  photoPreview.style.display = 'block';
+  feed.style.display         = 'none';
+
+  // Mirror the photo preview too so it matches what was shown
+  if (isMirrored) {
+    photoPreview.classList.add('camera-feed--mirrored');
+  }
+
+  document.getElementById('camera-btn-row').innerHTML = `
+    <img src="icons/accept.png"  class="camera-action-btn" title="Accept"  onclick="acceptPhoto()">
+    <img src="icons/discard.png" class="camera-action-btn" title="Discard" onclick="discardCapture()">
+  `;
+}
+
+async function acceptPhoto() {
+  const canvas = document.getElementById('camera-canvas');
+  canvas.toBlob(async blob => {
+    await uploadMemory(blob, 'image', 'jpg');
+    closeCameraPreview();
+  }, 'image/jpeg', 0.9);
+}
+
+// ── Video ─────────────────────────────────────────────────────────────────
+
+function startVideoRecording() {
+  if (!cameraStream) return;
+  videoChunks = [];
+  const mimeType      = MediaRecorder.isTypeSupported('video/mp4') ? 'video/mp4' : 'video/webm';
+  cameraMediaRecorder = new MediaRecorder(cameraStream, { mimeType });
+
+  cameraMediaRecorder.ondataavailable = e => {
+    if (e.data.size > 0) videoChunks.push(e.data);
+  };
+
+  cameraMediaRecorder.onstop = function() {
+    const blob = new Blob(videoChunks, { type: mimeType });
+    const url  = URL.createObjectURL(blob);
+
+    const feed         = document.getElementById('camera-feed');
+    const videoPreview = document.getElementById('camera-video-preview');
+    feed.style.display         = 'none';
+    videoPreview.src           = url;
+    videoPreview.style.display = 'block';
+
+    document.getElementById('camera-btn-row').innerHTML = `
+      <img src="icons/accept.png"  class="camera-action-btn" title="Accept"  onclick="acceptVideo('${url}', '${mimeType}')">
+      <img src="icons/discard.png" class="camera-action-btn" title="Discard" onclick="discardCapture()">
+    `;
+  };
+
+  cameraMediaRecorder.start(1000);
+
+  document.getElementById('camera-btn-row').innerHTML = `
+    <img src="icons/stop.png" class="camera-action-btn" title="Stop" onclick="stopVideoRecording()">
+  `;
+}
+
+function stopVideoRecording() {
+  if (cameraMediaRecorder && cameraMediaRecorder.state !== 'inactive') {
+    cameraMediaRecorder.stop();
+  }
+}
+
+async function acceptVideo(url, mimeType) {
+  const blob = await fetch(url).then(r => r.blob());
+  const ext  = mimeType.includes('mp4') ? 'mp4' : 'webm';
+  await uploadMemory(blob, 'video', ext);
+  closeCameraPreview();
+}
+
+// ── Shared upload ─────────────────────────────────────────────────────────
+
+function discardCapture() {
+  const feed         = document.getElementById('camera-feed');
+  const photoPreview = document.getElementById('camera-photo-preview');
+  const videoPreview = document.getElementById('camera-video-preview');
+  feed.style.display         = 'block';
+  photoPreview.style.display = 'none';
+  videoPreview.style.display = 'none';
+  photoPreview.src           = '';
+  videoPreview.src           = '';
+  photoPreview.classList.remove('camera-feed--mirrored');
+
+  document.getElementById('camera-btn-row').innerHTML = `
+    <img src="icons/photo.png" class="camera-action-btn" title="Take Photo"   onclick="takePhoto()">
+    <img src="icons/video.png" class="camera-action-btn" title="Record Video" onclick="startVideoRecording()">
+  `;
+}
+
+async function uploadMemory(blob, mediaType, ext) {
+  const grid = document.getElementById(`memories-grid-${cameraBoatId}`);
+
+  const uploadingEl = document.createElement('p');
+  uploadingEl.style.cssText = 'font-size:0.75rem;opacity:0.6;font-style:italic;grid-column:1/-1;';
+  uploadingEl.textContent   = 'Uploading…';
+  if (grid) grid.appendChild(uploadingEl);
+
+  try {
+    const memoryId = Date.now().toString();
+    const path     = `memories/${cameraBoatId}/${memoryId}.${ext}`;
+
+    const { error: uploadError } = await window.sb.storage
+      .from('recordings')
+      .upload(path, blob, { contentType: blob.type });
+    if (uploadError) throw uploadError;
+
+    const { data: urlData } = window.sb.storage
+      .from('recordings')
+      .getPublicUrl(path);
+    const downloadURL = urlData.publicUrl;
+
+    const { error: dbError } = await window.sb
+      .from('memories')
+      .insert({ id: memoryId, boat_id: cameraBoatId, url: downloadURL, media_type: mediaType });
+    if (dbError) throw dbError;
+
+    if (grid) {
+      uploadingEl.remove();
+      grid.querySelector('p')?.remove();
+      appendMemory(grid, memoryId, downloadURL, mediaType, grid.children.length, cameraBoatId);
+    }
+  } catch (err) {
+    if (uploadingEl) uploadingEl.textContent = 'Upload failed. Please try again.';
+    console.error('Memory upload error:', err);
   }
 }
 
