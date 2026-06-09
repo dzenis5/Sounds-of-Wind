@@ -4,13 +4,10 @@ const audio     = document.getElementById('bg-audio');
 const icon      = document.getElementById('mute-icon');
 const volumeBar = document.getElementById('volume-bar');
 
-// iOS requires both click and touchstart
 function startAudio() {
   const playPromise = audio.play();
   if (playPromise !== undefined) {
-    playPromise.catch(() => {
-      // Autoplay blocked — wait for next interaction
-    });
+    playPromise.catch(() => {});
   }
   document.body.removeEventListener('click', startAudio);
   document.body.removeEventListener('touchstart', startAudio);
@@ -25,11 +22,6 @@ function getVolumeIcon(volume) {
   if (volume <= 0.65)             return 'icons/mute2.png';
   return                                 'icons/mute3.png';
 }
-
-document.body.addEventListener('touchstart', function startAudio() {
-  audio.play();
-  document.body.removeEventListener('touchstart', startAudio);
-}, { once: true });
 
 function toggleMute() {
   if (audio.muted) {
@@ -125,7 +117,7 @@ function openLibrary() {
 
 // ── Boat ──────────────────────────────────────────────────────────────────
 
-const boatSaves    = [];
+const boatSaves     = [];
 const occupiedZones = [];
 const boatW  = 150;
 const boatH  = 150;
@@ -205,10 +197,9 @@ function rectsOverlap(a, b, padding) {
 }
 
 function buildWrapper(song, from, to, boatFile, x, y, boatId) {
-  const isMobile = window.innerWidth <= 768;
   const wrapper  = document.createElement('div');
 
-  wrapper.style.position      = isMobile ? 'absolute' : 'fixed';
+  wrapper.style.position      = 'fixed';
   wrapper.style.left          = x + 'px';
   wrapper.style.top           = y + 'px';
   wrapper.style.width         = boatW + 'px';
@@ -243,7 +234,6 @@ function buildWrapper(song, from, to, boatFile, x, y, boatId) {
 
 function spawnBoat(song, from, to, boatFile) {
   const padding  = 10;
-  const isMobile = window.innerWidth <= 768;
   const canvasW  = window.innerWidth;
   const canvasH  = window.innerHeight;
   const maxY     = canvasH * 0.90;
@@ -268,7 +258,7 @@ function spawnBoat(song, from, to, boatFile) {
       const boatId  = Date.now().toString();
       buildWrapper(song, from, to, boatFile, x, y, boatId);
       occupiedZones.push(candidate);
-      const newBoat = { id: boatId, song, from, to, boatFile, x, y, audios: [], audioMap: {} };
+      const newBoat = { id: boatId, song, from, to, boatFile, x, y };
       boatSaves.push(newBoat);
       saveBoat(newBoat);
       placed = true;
@@ -279,12 +269,10 @@ function spawnBoat(song, from, to, boatFile) {
 }
 
 function repositionBoats() {
-  const isMobile = window.innerWidth <= 768;
-  const canvasW  = window.innerWidth;
-  const canvasH  = window.innerHeight;
+  const canvasW = window.innerWidth;
+  const canvasH = window.innerHeight;
 
   document.querySelectorAll('[data-boat-id]').forEach(wrapper => {
-    wrapper.style.position = isMobile ? 'absolute' : 'fixed';
     let x = Math.max(0, Math.min(canvasW - wrapper.offsetWidth,  parseFloat(wrapper.style.left)));
     let y = Math.max(0, Math.min(canvasH - wrapper.offsetHeight, parseFloat(wrapper.style.top)));
     wrapper.style.left = x + 'px';
@@ -345,36 +333,36 @@ function openBoatWindow(song, from, to, boatEl, boatId) {
 
   document.body.appendChild(win);
 
-  // Load saved audios with delete buttons
-  const boat = boatSaves.find(b => b.id === boatId);
-  if (boat) {
-    const container = document.getElementById('saved-audio-container');
-    const audioMap  = boat.audioMap || {};
-    const entries   = Object.entries(audioMap);
+  // Load saved audio URLs from Supabase
+  loadAudioForBoat(boatId);
+}
 
-    if (entries.length > 0) {
-      entries.forEach(([audioId, base64]) => {
+async function loadAudioForBoat(boatId) {
+  const container = document.getElementById('saved-audio-container');
+  if (!container) return;
+  try {
+    const { data, error } = await window.sb
+      .from('audio')
+      .select('*')
+      .eq('boat_id', boatId)
+      .order('id', { ascending: true });
+    if (error) throw error;
+    if (data && data.length > 0) {
+      document.getElementById('record-hint').style.display = 'none';
+      data.forEach(row => {
         const audioRow = document.createElement('div');
         audioRow.classList.add('audio-row');
-        audioRow.dataset.audioId = audioId;
+        audioRow.dataset.audioId = row.id;
         audioRow.innerHTML = `
-          <audio class="saved-audio" src="${base64}" controls></audio>
-          <div class="delete-audio-btn" onclick="deleteAudio('${audioId}', this)">✕</div>
+          <audio class="saved-audio" src="${row.url}" controls></audio>
+          <div class="delete-audio-btn" onclick="deleteAudio('${row.id}', this)">✕</div>
         `;
         container.appendChild(audioRow);
       });
-    } else if (boat.audios && boat.audios.length > 0) {
-      // Legacy fallback for boats saved before audioMap was introduced
-      boat.audios.forEach((base64, i) => {
-        const audioRow = document.createElement('div');
-        audioRow.classList.add('audio-row');
-        audioRow.innerHTML = `
-          <audio class="saved-audio" src="${base64}" controls></audio>
-          <div class="delete-audio-btn" onclick="deleteAudio('legacy-${i}', this)">✕</div>
-        `;
-        container.appendChild(audioRow);
-      });
+      document.getElementById('record-hint').style.display = 'block';
     }
+  } catch (err) {
+    console.error('Error loading audio:', err);
   }
 }
 
@@ -392,16 +380,6 @@ let analyser      = null;
 let audioCtx      = null;
 let playAllActive = false;
 
-// Add this before startRecording()
-async function unlockAudio() {
-  if (!audioCtx) {
-    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-  }
-  if (audioCtx.state === 'suspended') {
-    await audioCtx.resume();
-  }
-}
-
 function startRecording() {
   const win     = document.getElementById('boat-window');
   const isChoir = win && win.dataset.choirMode === 'true';
@@ -410,9 +388,9 @@ function startRecording() {
     ? { audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } }
     : { audio: { echoCancellation: true,  noiseSuppression: true,  autoGainControl: true  } };
 
-    navigator.mediaDevices.getUserMedia(micConstraints).then(async function(stream) {
+  navigator.mediaDevices.getUserMedia(micConstraints).then(async function(stream) {
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    await audioCtx.resume(); // iOS requires this
+    await audioCtx.resume();
     analyser = audioCtx.createAnalyser();
     audioCtx.createMediaStreamSource(stream).connect(analyser);
     analyser.fftSize = 256;
@@ -432,12 +410,10 @@ function startRecording() {
       <img src="icons/stop.png" class="record-btn" title="Stop" onclick="stopRecording()">
     `;
 
-    const mimeType = MediaRecorder.isTypeSupported('audio/mp4')
-      ? 'audio/mp4'
-      : 'audio/webm';
+    const mimeType = MediaRecorder.isTypeSupported('audio/mp4') ? 'audio/mp4' : 'audio/webm';
     audioChunks   = [];
     mediaRecorder = new MediaRecorder(stream, { mimeType });
-    mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+    mediaRecorder.ondataavailable = e => { if (e.data.size > 0) audioChunks.push(e.data); };
     mediaRecorder.onstop = function() {
       stream.getTracks().forEach(t => t.stop());
       cancelAnimationFrame(waveformAnim);
@@ -466,7 +442,7 @@ function startRecording() {
       updatePreviewChoir();
     };
 
-    mediaRecorder.start();
+    mediaRecorder.start(1000); // collect a chunk every second — fixes long recordings
   }).catch(() => alert('Microphone access was denied.'));
 }
 
@@ -474,43 +450,61 @@ function stopRecording() {
   if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop();
 }
 
-function acceptRecording(url) {
+async function acceptRecording(url) {
   document.getElementById('accept-discard-row')?.remove();
   document.getElementById('boat-footer').innerHTML = `
     <img src="icons/record.png" class="record-btn" title="Record" onclick="startRecording()">
   `;
-  document.getElementById('record-hint').style.display = 'block';
 
-  fetch(url).then(r => r.blob()).then(blob => {
-    const reader = new FileReader();
-    reader.onloadend = async function() {
-      const base64    = reader.result;
-      const audioId   = Date.now().toString();
-      const container = document.getElementById('saved-audio-container');
+  const container = document.getElementById('saved-audio-container');
+  const uploadingRow = document.createElement('div');
+  uploadingRow.id = 'uploading-row';
+  uploadingRow.style.cssText = 'font-size:0.75rem;opacity:0.6;margin-top:8px;font-style:italic;';
+  uploadingRow.textContent = 'Uploading…';
+  container.appendChild(uploadingRow);
 
-      const audioRow = document.createElement('div');
-      audioRow.classList.add('audio-row');
-      audioRow.dataset.audioId = audioId;
-      audioRow.innerHTML = `
-        <audio class="saved-audio" src="${base64}" controls></audio>
-        <div class="delete-audio-btn" onclick="deleteAudio('${audioId}', this)">✕</div>
-      `;
-      container.appendChild(audioRow);
+  try {
+    const blob    = await fetch(url).then(r => r.blob());
+    const audioId = Date.now().toString();
+    const ext     = blob.type.includes('mp4') ? 'mp4' : 'webm';
+    const win     = document.getElementById('boat-window');
+    const boatId  = win?.dataset.boatId;
+    const path    = `${boatId}/${audioId}.${ext}`;
 
-      const win    = document.getElementById('boat-window');
-      const boatId = win?.dataset.boatId;
-      if (boatId) {
-        const boat = boatSaves.find(b => b.id === boatId);
-        if (boat) {
-          if (!boat.audioMap) boat.audioMap = {};
-          boat.audioMap[audioId] = base64;
-          boat.audios = Object.values(boat.audioMap);
-          await saveBoat(boat);
-        }
-      }
-    };
-    reader.readAsDataURL(blob);
-  });
+    // Upload file to Supabase Storage
+    const { error: uploadError } = await window.sb.storage
+      .from('recordings')
+      .upload(path, blob, { contentType: blob.type });
+    if (uploadError) throw uploadError;
+
+    // Get public URL
+    const { data: urlData } = window.sb.storage
+      .from('recordings')
+      .getPublicUrl(path);
+    const downloadURL = urlData.publicUrl;
+
+    // Save record to audio table
+    const { error: dbError } = await window.sb
+      .from('audio')
+      .insert({ id: audioId, boat_id: boatId, url: downloadURL });
+    if (dbError) throw dbError;
+
+    uploadingRow.remove();
+
+    const audioRow = document.createElement('div');
+    audioRow.classList.add('audio-row');
+    audioRow.dataset.audioId = audioId;
+    audioRow.innerHTML = `
+      <audio class="saved-audio" src="${downloadURL}" controls></audio>
+      <div class="delete-audio-btn" onclick="deleteAudio('${audioId}', this)">✕</div>
+    `;
+    container.appendChild(audioRow);
+    document.getElementById('record-hint').style.display = 'block';
+
+  } catch (err) {
+    uploadingRow.textContent = 'Upload failed. Please try again.';
+    console.error('Upload error:', err);
+  }
 }
 
 function discardRecording() {
@@ -602,35 +596,37 @@ function togglePlayAll() {
   }
 }
 
-// ── Persistence (Firebase) ────────────────────────────────────────────────
+// ── Persistence (Supabase) ────────────────────────────────────────────────
 
 async function saveBoat(boat) {
-  if (!window.db || !window.fsSetDoc) return;
   try {
-    await window.fsSetDoc(window.fsDoc(window.db, 'boats', boat.id), {
-      ...boat,
-      audios: boat.audioMap || {}
+    const { error } = await window.sb.from('boats').upsert({
+      id:       boat.id,
+      song:     boat.song,
+      from:     boat.from,
+      to:       boat.to,
+      boatFile: boat.boatFile,
+      x:        boat.x,
+      y:        boat.y
     });
-  } catch(err) {
-    console.error('Firestore save error:', err);
+    if (error) throw error;
+  } catch (err) {
+    console.error('Supabase save error:', err);
   }
 }
 
 async function restoreBoats() {
-  if (!window.db || !window.fsGetDocs) return;
   try {
-    const snapshot = await window.fsGetDocs(window.fsCollection(window.db, 'boats'));
-    snapshot.forEach(docSnap => {
-      const boat    = docSnap.data();
-      boat.audioMap = typeof boat.audios === 'object' && !Array.isArray(boat.audios)
-        ? boat.audios
-        : {};
-      boat.audios   = Object.values(boat.audioMap);
+    const { data, error } = await window.sb
+      .from('boats')
+      .select('*');
+    if (error) throw error;
+    data.forEach(boat => {
       boatSaves.push(boat);
       buildWrapper(boat.song, boat.from, boat.to, boat.boatFile, boat.x, boat.y, boat.id);
     });
-  } catch(err) {
-    console.error('Firestore restore error:', err);
+  } catch (err) {
+    console.error('Supabase restore error:', err);
   }
 }
 
@@ -642,31 +638,45 @@ async function deleteBoat(boatId, wrapper) {
   const index = boatSaves.findIndex(b => b.id === boatId);
   if (index !== -1) boatSaves.splice(index, 1);
   try {
-    await window.fsDeleteDoc(window.fsDoc(window.db, 'boats', boatId));
-  } catch(err) {
-    console.error('Firestore delete error:', err);
+    // Delete all audio files from storage
+    const { data: audioRows } = await window.sb
+      .from('audio')
+      .select('id, url')
+      .eq('boat_id', boatId);
+    if (audioRows && audioRows.length > 0) {
+      const paths = audioRows.map(r => {
+        const parts = r.url.split('/recordings/');
+        return parts[1] ? decodeURIComponent(parts[1]) : null;
+      }).filter(Boolean);
+      if (paths.length > 0) {
+        await window.sb.storage.from('recordings').remove(paths);
+      }
+      await window.sb.from('audio').delete().eq('boat_id', boatId);
+    }
+    await window.sb.from('boats').delete().eq('id', boatId);
+  } catch (err) {
+    console.error('Supabase delete error:', err);
   }
 }
 
 async function deleteAudio(audioId, btn) {
   if (!moderatorMode) return;
   if (!confirm('Delete this recording?')) return;
-  const row    = btn.closest('.audio-row');
-  const win    = document.getElementById('boat-window');
-  const boatId = win?.dataset.boatId;
-  if (boatId) {
-    const boat = boatSaves.find(b => b.id === boatId);
-    if (boat) {
-      if (!boat.audioMap) boat.audioMap = {};
-      delete boat.audioMap[audioId];
-      boat.audios = Object.values(boat.audioMap);
-      try {
-        await saveBoat(boat);
-        row.remove();
-      } catch(err) {
-        console.error('Error deleting audio:', err);
+  const row = btn.closest('.audio-row');
+  try {
+    // Delete from storage
+    const audio = row.querySelector('audio');
+    if (audio?.src) {
+      const parts = audio.src.split('/recordings/');
+      if (parts[1]) {
+        await window.sb.storage.from('recordings').remove([decodeURIComponent(parts[1])]);
       }
     }
+    const { error } = await window.sb.from('audio').delete().eq('id', audioId);
+    if (error) throw error;
+    row.remove();
+  } catch (err) {
+    console.error('Error deleting audio:', err);
   }
 }
 
@@ -692,9 +702,8 @@ function makeDraggable(wrapper) {
     const dy = e.clientY - startY;
     if (Math.abs(dx) > 3 || Math.abs(dy) > 3) wrapper._dragMoved = true;
     if (!wrapper._dragMoved) return;
-    const isMobile = window.innerWidth <= 768;
-    const canvasW  = window.innerWidth;
-    const canvasH  = window.innerHeight;
+    const canvasW = window.innerWidth;
+    const canvasH = window.innerHeight;
     wrapper.style.left = Math.max(0, Math.min(canvasW - wrapper.offsetWidth,  origX + dx)) + 'px';
     wrapper.style.top  = Math.max(0, Math.min(canvasH - wrapper.offsetHeight, origY + dy)) + 'px';
   });
@@ -716,8 +725,8 @@ function makeDraggable(wrapper) {
 
 // ── Start ─────────────────────────────────────────────────────────────────
 
-if (window.firebaseReady) {
+if (window.supabaseReady) {
   restoreBoats();
 } else {
-  window.addEventListener('firebaseReady', () => restoreBoats());
+  window.addEventListener('supabaseReady', () => restoreBoats());
 }
