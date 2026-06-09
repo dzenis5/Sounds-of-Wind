@@ -96,8 +96,14 @@ if (window.supabaseReady) {
 
 function openBoatPanel(boat, cardEl) {
   const existing = document.getElementById('boat-panel');
-  if (existing) existing.remove();
-
+  if (existing) {
+    if (existing.dataset.boatId === String(boat.id)) {
+      existing.remove();
+      return;
+    }
+    existing.remove();
+  }
+  
   const panel = document.createElement('div');
   panel.id               = 'boat-panel';
   panel.dataset.boatId   = boat.id;
@@ -131,6 +137,18 @@ function openBoatPanel(boat, cardEl) {
         </div>
       </div>
 
+      <div class="memories-section">
+        <div class="memories-title">Memories</div>
+        <div class="memories-subtext">Upload photos or videos that relate to this song</div>
+        <div class="memories-grid" id="memories-grid-${boat.id}">
+          <p class="loading-text">Loading memories...</p>
+        </div>
+        <div class="memories-upload-row">
+          <img src="icons/upload.png" class="memories-upload-icon" onclick="triggerMemoryUpload('${boat.id}')">
+          <img src="icons/camera.png" class="memories-upload-icon" onclick="openCameraPreview('${boat.id}')">
+        </div>
+      </div>
+
       <div class="comment-section">
         <div class="comment-title">Comments</div>
         <div class="comment-list" id="comment-list-${boat.id}">
@@ -140,18 +158,6 @@ function openBoatPanel(boat, cardEl) {
           <input type="text" id="comment-name" placeholder="Your name" class="comment-input">
           <input type="text" id="comment-text" placeholder="Add a comment..." class="comment-input">
           <button onclick="submitComment('${boat.id}')" class="comment-submit">Post</button>
-        </div>
-      </div>
-
-       <div class="memories-section">
-        <div class="memories-title">Memories</div>
-        <div class="memories-subtext">Upload photos or videos that relate to this song</div>
-        <div class="memories-grid" id="memories-grid-${boat.id}">
-          <p class="loading-text">Loading memories...</p>
-        </div>
-        <div class="memories-upload-row">
-          <img src="icons/upload.png" class="memories-upload-icon" onclick="triggerMemoryUpload('${boat.id}')">
-          <img src="icons/camera.png" class="memories-upload-icon" onclick="openCameraPreview('${boat.id}')">
         </div>
       </div>
 
