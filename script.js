@@ -1,3 +1,76 @@
+// ── Loader ────────────────────────────────────────────────────────────────
+
+const loaderSteps = {
+  dom:      false,
+  firebase: false,
+  boats:    false,
+  assets:   false
+};
+
+function setLoaderProgress(step) {
+  loaderSteps[step] = true;
+  const total    = Object.keys(loaderSteps).length;
+  const done     = Object.values(loaderSteps).filter(Boolean).length;
+  const pct      = (done / total) * 100;
+  const bar      = document.getElementById('loader-bar');
+  if (bar) bar.style.width = pct + '%';
+
+  if (done === total) finishLoading();
+}
+
+function finishLoading() {
+  const spin    = document.getElementById('loader-spin');
+  const bar     = document.getElementById('loader-bar');
+  const barTrack = document.getElementById('loader-bar-track');
+
+  // Fade out spinner and bar
+  if (spin)     spin.style.opacity     = '0';
+  if (barTrack) barTrack.style.opacity = '0';
+
+  // Wait for first interaction to split
+  setTimeout(() => {
+    const overlay = document.getElementById('loader-overlay');
+    if (overlay) overlay.style.pointerEvents = 'none';
+
+    document.addEventListener('pointerdown', triggerSplit, { once: true });
+  }, 300);
+}
+
+function triggerSplit() {
+  const overlay = document.getElementById('loader-overlay');
+  const boat    = document.getElementById('loader-boat');
+  const left    = document.getElementById('loader-left');
+  const right   = document.getElementById('loader-right');
+
+  // Copy overlay content into the two panels so the split looks seamless
+  if (left)  left.style.pointerEvents  = 'none';
+  if (right) right.style.pointerEvents = 'none';
+
+  // Fade out boat
+  if (boat) boat.style.opacity = '0';
+
+  // Hide the centre overlay immediately so panels take over
+  if (overlay) overlay.style.display = 'none';
+
+  // Trigger the split
+  requestAnimationFrame(() => {
+    if (left)  left.classList.add('split');
+    if (right) right.classList.add('split');
+  });
+
+  // Clean up after animation
+  setTimeout(() => {
+    left?.remove();
+    right?.remove();
+  }, 800);
+}
+
+// Mark DOM as ready
+document.addEventListener('DOMContentLoaded', () => setLoaderProgress('dom'));
+
+// Mark assets (images/gifs) as loaded
+window.addEventListener('load', () => setLoaderProgress('assets'));
+
 // ── Audio ─────────────────────────────────────────────────────────────────
 
 const audio     = document.getElementById('bg-audio');
@@ -628,6 +701,7 @@ async function restoreBoats() {
   } catch (err) {
     console.error('Supabase restore error:', err);
   }
+  setLoaderProgress('boats');
 }
 
 async function deleteBoat(boatId, wrapper) {
@@ -726,7 +800,11 @@ function makeDraggable(wrapper) {
 // ── Start ─────────────────────────────────────────────────────────────────
 
 if (window.supabaseReady) {
+  setLoaderProgress('firebase');
   restoreBoats();
 } else {
-  window.addEventListener('supabaseReady', () => restoreBoats());
+  window.addEventListener('supabaseReady', () => {
+    setLoaderProgress('firebase');
+    restoreBoats();
+  });
 }
