@@ -47,27 +47,25 @@ async function loadLibrary() {
   grid.innerHTML = '';
   allBoats.length = 0;
 
-  if (!window.db || !window.fsGetDocs) {
+  if (!window.sb) {
     grid.innerHTML = '<p class="loading-text">Could not connect to database.</p>';
     return;
   }
 
   try {
-    const snapshot = await window.fsGetDocs(window.fsCollection(window.db, 'boats'));
+    const { data, error } = await window.sb
+      .from('boats')
+      .select('*')
+      .order('id', { ascending: true });
+    if (error) throw error;
 
-    if (snapshot.empty) {
+    if (!data || data.length === 0) {
       grid.innerHTML = '<p class="loading-text">No boats yet.</p>';
       return;
     }
 
-    snapshot.forEach(docSnap => {
-      const boat    = docSnap.data();
-      boat.audioMap = typeof boat.audios === 'object' && !Array.isArray(boat.audios)
-        ? boat.audios
-        : {};
-      boat.audios   = Object.values(boat.audioMap);
+    data.forEach(boat => {
       allBoats.push(boat);
-
       const card = document.createElement('div');
       card.classList.add('boat-card');
       card.innerHTML = `
@@ -79,19 +77,18 @@ async function loadLibrary() {
       grid.appendChild(card);
     });
 
-  } catch(err) {
+  } catch (err) {
     console.error('Error loading library:', err);
     grid.innerHTML = '<p class="loading-text">Error loading boats.</p>';
   }
 }
 
-if (window.firebaseReady) {
+if (window.supabaseReady) {
   loadLibrary();
 } else {
-  window.addEventListener('firebaseReady', () => loadLibrary());
-  // Fallback in case event already fired before this script loaded
+  window.addEventListener('supabaseReady', () => loadLibrary());
   setTimeout(() => {
-    if (allBoats.length === 0 && window.db) loadLibrary();
+    if (allBoats.length === 0 && window.sb) loadLibrary();
   }, 2000);
 }
 
@@ -102,19 +99,10 @@ function openBoatPanel(boat, cardEl) {
   if (existing) existing.remove();
 
   const panel = document.createElement('div');
-  panel.id              = 'boat-panel';
-  panel.dataset.boatId  = boat.id;
+  panel.id               = 'boat-panel';
+  panel.dataset.boatId   = boat.id;
   panel.dataset.choirMode = 'false';
   panel.classList.add('boat-panel-inline');
-
-  const audioHTML = Object.keys(boat.audioMap || {}).length === 0
-    ? '<p style="opacity:0.6;font-size:0.85rem;margin-top:8px;">No recordings yet.</p>'
-    : Object.entries(boat.audioMap).map(([audioId, src]) => `
-        <div class="audio-row" data-audio-id="${audioId}">
-          <audio class="saved-audio" src="${src}" controls></audio>
-          <div class="delete-audio-btn" onclick="deleteAudio('${audioId}', this)">✕</div>
-        </div>
-      `).join('');
 
   panel.innerHTML = `
     <img src="icons/discard.png" class="panel-close-btn" title="Close"
@@ -134,7 +122,7 @@ function openBoatPanel(boat, cardEl) {
             </div>
             <div class="song-route">From ${boat.from} to ${boat.to}</div>
             <div class="boat-window-hint" id="record-hint">Press record to add a song</div>
-            <div id="saved-audio-container">${audioHTML}</div>
+            <div id="saved-audio-container"></div>
           </div>
         </div>
         <canvas class="waveform-canvas" id="waveform-canvas" style="display:none;"></canvas>
@@ -168,7 +156,37 @@ function openBoatPanel(boat, cardEl) {
   });
   lastInRow.insertAdjacentElement('afterend', panel);
 
+  loadAudioForBoat(boat.id);
   loadComments(boat.id);
+}
+
+async function loadAudioForBoat(boatId) {
+  const container = document.getElementById('saved-audio-container');
+  if (!container) return;
+  try {
+    const { data, error } = await window.sb
+      .from('audio')
+      .select('*')
+      .eq('boat_id', boatId)
+      .order('id', { ascending: true });
+    if (error) throw error;
+    if (data && data.length > 0) {
+      document.getElementById('record-hint').style.display = 'none';
+      data.forEach(row => {
+        const audioRow = document.createElement('div');
+        audioRow.classList.add('audio-row');
+        audioRow.dataset.audioId = row.id;
+        audioRow.innerHTML = `
+          <audio class="saved-audio" src="${row.url}" controls></audio>
+          <div class="delete-audio-btn" onclick="deleteAudio('${row.id}', this)">✕</div>
+        `;
+        container.appendChild(audioRow);
+      });
+      document.getElementById('record-hint').style.display = 'block';
+    }
+  } catch (err) {
+    console.error('Error loading audio:', err);
+  }
 }
 
 // ── Recording ─────────────────────────────────────────────────────────────
@@ -180,16 +198,6 @@ let analyser      = null;
 let audioCtx      = null;
 let playAllActive = false;
 
-// Add this before startRecording()
-async function unlockAudio() {
-  if (!audioCtx) {
-    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-  }
-  if (audioCtx.state === 'suspended') {
-    await audioCtx.resume();
-  }
-}
-
 function startRecording() {
   const panel   = document.getElementById('boat-panel');
   const isChoir = panel && panel.dataset.choirMode === 'true';
@@ -198,9 +206,9 @@ function startRecording() {
     ? { audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } }
     : { audio: { echoCancellation: true,  noiseSuppression: true,  autoGainControl: true  } };
 
-    navigator.mediaDevices.getUserMedia(micConstraints).then(async function(stream) {
+  navigator.mediaDevices.getUserMedia(micConstraints).then(async function(stream) {
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    await audioCtx.resume(); // iOS requires this
+    await audioCtx.resume();
     analyser = audioCtx.createAnalyser();
     audioCtx.createMediaStreamSource(stream).connect(analyser);
     analyser.fftSize = 256;
@@ -220,12 +228,10 @@ function startRecording() {
       <img src="icons/stop.png" class="record-btn" title="Stop" onclick="stopRecording()">
     `;
 
-    const mimeType = MediaRecorder.isTypeSupported('audio/mp4')
-      ? 'audio/mp4'
-      : 'audio/webm';
+    const mimeType = MediaRecorder.isTypeSupported('audio/mp4') ? 'audio/mp4' : 'audio/webm';
     audioChunks   = [];
     mediaRecorder = new MediaRecorder(stream, { mimeType });
-    mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+    mediaRecorder.ondataavailable = e => { if (e.data.size > 0) audioChunks.push(e.data); };
     mediaRecorder.onstop = function() {
       stream.getTracks().forEach(t => t.stop());
       cancelAnimationFrame(waveformAnim);
@@ -254,7 +260,7 @@ function startRecording() {
       updatePreviewChoir();
     };
 
-    mediaRecorder.start();
+    mediaRecorder.start(1000); // collect a chunk every second — fixes long recordings
   }).catch(() => alert('Microphone access was denied.'));
 }
 
@@ -262,49 +268,63 @@ function stopRecording() {
   if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop();
 }
 
-function acceptRecording(url) {
+async function acceptRecording(url) {
   document.getElementById('accept-discard-row')?.remove();
   document.getElementById('boat-footer').innerHTML = `
     <img src="icons/record.png" class="record-btn" title="Record" onclick="startRecording()">
   `;
-  document.getElementById('record-hint').style.display = 'block';
 
-  fetch(url).then(r => r.blob()).then(blob => {
-    const reader = new FileReader();
-    reader.onloadend = async function() {
-      const base64    = reader.result;
-      const audioId   = Date.now().toString();
-      const container = document.getElementById('saved-audio-container');
+  const container = document.getElementById('saved-audio-container');
+  container.querySelector('p')?.remove();
 
-      container.querySelector('p')?.remove();
+  const uploadingRow = document.createElement('div');
+  uploadingRow.id = 'uploading-row';
+  uploadingRow.style.cssText = 'font-size:0.75rem;opacity:0.6;margin-top:8px;font-style:italic;';
+  uploadingRow.textContent = 'Uploading…';
+  container.appendChild(uploadingRow);
 
-      const audioRow = document.createElement('div');
-      audioRow.classList.add('audio-row');
-      audioRow.dataset.audioId = audioId;
-      audioRow.innerHTML = `
-        <audio class="saved-audio" src="${base64}" controls></audio>
-        <div class="delete-audio-btn" onclick="deleteAudio('${audioId}', this)">✕</div>
-      `;
-      container.appendChild(audioRow);
+  try {
+    const blob    = await fetch(url).then(r => r.blob());
+    const audioId = Date.now().toString();
+    const ext     = blob.type.includes('mp4') ? 'mp4' : 'webm';
+    const panel   = document.getElementById('boat-panel');
+    const boatId  = panel?.dataset.boatId;
+    const path    = `${boatId}/${audioId}.${ext}`;
 
-      const panel  = document.getElementById('boat-panel');
-      const boatId = panel?.dataset.boatId;
-      if (boatId) {
-        const boat = allBoats.find(b => b.id === boatId);
-        if (boat) {
-          if (!boat.audioMap) boat.audioMap = {};
-          boat.audioMap[audioId] = base64;
-          boat.audios = Object.values(boat.audioMap);
-          try {
-            await window.fsSetDoc(window.fsDoc(window.db, 'boats', boatId), {
-              ...boat, audios: boat.audioMap
-            });
-          } catch(err) { console.error('Save error:', err); }
-        }
-      }
-    };
-    reader.readAsDataURL(blob);
-  });
+    // Upload file to Supabase Storage
+    const { error: uploadError } = await window.sb.storage
+      .from('recordings')
+      .upload(path, blob, { contentType: blob.type });
+    if (uploadError) throw uploadError;
+
+    // Get public URL
+    const { data: urlData } = window.sb.storage
+      .from('recordings')
+      .getPublicUrl(path);
+    const downloadURL = urlData.publicUrl;
+
+    // Save record to audio table
+    const { error: dbError } = await window.sb
+      .from('audio')
+      .insert({ id: audioId, boat_id: boatId, url: downloadURL });
+    if (dbError) throw dbError;
+
+    uploadingRow.remove();
+
+    const audioRow = document.createElement('div');
+    audioRow.classList.add('audio-row');
+    audioRow.dataset.audioId = audioId;
+    audioRow.innerHTML = `
+      <audio class="saved-audio" src="${downloadURL}" controls></audio>
+      <div class="delete-audio-btn" onclick="deleteAudio('${audioId}', this)">✕</div>
+    `;
+    container.appendChild(audioRow);
+    document.getElementById('record-hint').style.display = 'block';
+
+  } catch (err) {
+    uploadingRow.textContent = 'Upload failed. Please try again.';
+    console.error('Upload error:', err);
+  }
 }
 
 function discardRecording() {
@@ -402,30 +422,34 @@ async function loadComments(boatId) {
   const list = document.getElementById(`comment-list-${boatId}`);
   if (!list) return;
   try {
-    const snapshot = await window.fsGetDocs(
-      window.fsCollection(window.db, 'boats', boatId, 'comments')
-    );
-    if (snapshot.empty) {
+    const { data, error } = await window.sb
+      .from('comments')
+      .select('*')
+      .eq('boat_id', boatId)
+      .order('timestamp', { ascending: true });
+    if (error) throw error;
+
+    if (!data || data.length === 0) {
       list.innerHTML = '<p style="opacity:0.5;font-size:0.8rem;">No comments yet.</p>';
       return;
     }
     list.innerHTML = '';
-    snapshot.forEach(docSnap => {
-      const c         = docSnap.data();
-      const commentId = docSnap.id;
-      const item      = document.createElement('div');
+    data.forEach(c => {
+      const item = document.createElement('div');
       item.classList.add('comment-item');
-      item.dataset.commentId = commentId;
+      item.dataset.commentId = c.id;
       item.innerHTML = `
         <div class="comment-item-header">
           <span class="comment-author">${c.name}</span>
-          <div class="delete-comment-btn" onclick="deleteComment('${boatId}', '${commentId}', this)">✕</div>
+          <div class="delete-comment-btn" onclick="deleteComment('${boatId}', '${c.id}', this)">✕</div>
         </div>
         <span class="comment-text">${c.text}</span>
       `;
       list.appendChild(item);
     });
-  } catch(err) { console.error('Error loading comments:', err); }
+  } catch (err) {
+    console.error('Error loading comments:', err);
+  }
 }
 
 async function submitComment(boatId) {
@@ -436,14 +460,18 @@ async function submitComment(boatId) {
   if (!name || !text) { alert('Please enter your name and a comment.'); return; }
   try {
     const commentId = Date.now().toString();
-    await window.fsSetDoc(
-      window.fsDoc(window.db, 'boats', boatId, 'comments', commentId),
-      { name, text, timestamp: commentId }
-    );
+    const { error } = await window.sb.from('comments').insert({
+      id:        commentId,
+      boat_id:   boatId,
+      name,
+      text,
+      timestamp: commentId
+    });
+    if (error) throw error;
     nameEl.value = '';
     textEl.value = '';
     loadComments(boatId);
-  } catch(err) {
+  } catch (err) {
     console.error('Error posting comment:', err);
     alert('Could not post comment.');
   }
@@ -453,30 +481,31 @@ async function deleteComment(boatId, commentId, btn) {
   if (!moderatorMode) return;
   if (!confirm('Delete this comment?')) return;
   try {
-    await window.fsDeleteDoc(window.fsDoc(window.db, 'boats', boatId, 'comments', commentId));
+    const { error } = await window.sb.from('comments').delete().eq('id', commentId);
+    if (error) throw error;
     btn.closest('.comment-item').remove();
-  } catch(err) { console.error('Error deleting comment:', err); }
+  } catch (err) {
+    console.error('Error deleting comment:', err);
+  }
 }
 
 async function deleteAudio(audioId, btn) {
   if (!moderatorMode) return;
   if (!confirm('Delete this recording?')) return;
-  const row    = btn.closest('.audio-row');
-  const panel  = document.getElementById('boat-panel');
-  const boatId = panel?.dataset.boatId;
-  if (boatId) {
-    const boat = allBoats.find(b => b.id === boatId);
-    if (boat) {
-      if (!boat.audioMap) boat.audioMap = {};
-      delete boat.audioMap[audioId];
-      boat.audios = Object.values(boat.audioMap);
-      try {
-        await window.fsSetDoc(window.fsDoc(window.db, 'boats', boatId), {
-          ...boat, audios: boat.audioMap
-        });
-        row.remove();
-      } catch(err) { console.error('Error deleting audio:', err); }
+  const row = btn.closest('.audio-row');
+  try {
+    const audio = row.querySelector('audio');
+    if (audio?.src) {
+      const parts = audio.src.split('/recordings/');
+      if (parts[1]) {
+        await window.sb.storage.from('recordings').remove([decodeURIComponent(parts[1])]);
+      }
     }
+    const { error } = await window.sb.from('audio').delete().eq('id', audioId);
+    if (error) throw error;
+    row.remove();
+  } catch (err) {
+    console.error('Error deleting audio:', err);
   }
 }
 
@@ -516,8 +545,8 @@ HOW TO USE:
 function handleAdd() {
   const addIcon = document.getElementById('add-icon');
   if (addIcon) {
-    addIcon.src = 'add1.png';
-    setTimeout(() => { addIcon.src = 'add.png'; }, 300);
+    addIcon.src = 'icons/add1.png';
+    setTimeout(() => { addIcon.src = 'icons/add.png'; }, 300);
   }
   openDialogue();
 }
@@ -580,16 +609,20 @@ async function submitBoat() {
 
   const boatId  = Date.now().toString();
   const newBoat = {
-    id: boatId, song, from, to, boatFile,
+    id:       boatId,
+    song,
+    from,
+    to,
+    boatFile,
     x: Math.random() * 600 + 100,
-    y: Math.random() * 300 + 100,
-    audios: {}
+    y: Math.random() * 300 + 100
   };
 
   try {
-    await window.fsSetDoc(window.fsDoc(window.db, 'boats', boatId), newBoat);
+    const { error } = await window.sb.from('boats').insert(newBoat);
+    if (error) throw error;
     loadLibrary();
-  } catch(err) {
+  } catch (err) {
     console.error('Error saving boat:', err);
     alert('Could not save boat.');
   }
