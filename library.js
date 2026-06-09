@@ -394,13 +394,23 @@ function lightboxKeyHandler(e) {
 
 // ── Camera Preview ────────────────────────────────────────────────────────
 
+// ── Camera Preview ────────────────────────────────────────────────────────
+
 let cameraStream        = null;
 let cameraMediaRecorder = null;
 let videoChunks         = [];
 let cameraBoatId        = null;
+let currentFacingMode   = 'environment';
+
+// Canvas-based recording state
+let canvasRecordStream  = null;
+let canvasDrawLoop      = null;
+let recordingCanvas     = null;
+let recordingCtx        = null;
 
 function openCameraPreview(boatId) {
-  cameraBoatId = boatId;
+  cameraBoatId      = boatId;
+  currentFacingMode = 'environment';
   const existing = document.getElementById('camera-preview');
   if (existing) existing.remove();
 
@@ -410,6 +420,7 @@ function openCameraPreview(boatId) {
     <div class="camera-backdrop" onclick="closeCameraPreview()"></div>
     <div class="camera-window">
       <button class="camera-close" onclick="closeCameraPreview()">✕</button>
+      <button class="camera-flip-btn" onclick="flipCamera()" title="Flip camera">⟳</button>
       <video id="camera-feed" autoplay playsinline muted class="camera-feed"></video>
       <canvas id="camera-canvas" style="display:none;"></canvas>
       <img id="camera-photo-preview" style="display:none;" class="camera-feed" alt="captured">
@@ -425,20 +436,19 @@ function openCameraPreview(boatId) {
 }
 
 async function startCameraStream() {
+  if (cameraStream) {
+    cameraStream.getTracks().forEach(t => t.stop());
+    cameraStream = null;
+  }
   try {
     cameraStream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: 'environment' },
+      video: { facingMode: currentFacingMode },
       audio: true
     });
     const feed = document.getElementById('camera-feed');
     if (feed) {
       feed.srcObject = cameraStream;
-      // Check which camera is active and mirror if front-facing
-      const track    = cameraStream.getVideoTracks()[0];
-      const settings = track.getSettings();
-      if (settings.facingMode === 'user') {
-        feed.classList.add('camera-feed--mirrored');
-      }
+      feed.classList.toggle('camera-feed--mirrored', currentFacingMode === 'user');
     }
   } catch (err) {
     alert('Could not access camera.');
@@ -446,7 +456,34 @@ async function startCameraStream() {
   }
 }
 
+async function flipCamera() {
+  currentFacingMode = currentFacingMode === 'environment' ? 'user' : 'environment';
+
+  // Stop old stream tracks but keep the MediaRecorder running
+  if (cameraStream) {
+    cameraStream.getTracks().forEach(t => t.stop());
+    cameraStream = null;
+  }
+
+  try {
+    cameraStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: currentFacingMode },
+      audio: true
+    });
+    const feed = document.getElementById('camera-feed');
+    if (feed) {
+      feed.srcObject = cameraStream;
+      feed.classList.toggle('camera-feed--mirrored', currentFacingMode === 'user');
+    }
+    // Canvas draw loop picks up the new feed automatically on next frame
+  } catch (err) {
+    alert('Could not switch camera.');
+    console.error(err);
+  }
+}
+
 function closeCameraPreview() {
+  stopCanvasDrawLoop();
   if (cameraStream) {
     cameraStream.getTracks().forEach(t => t.stop());
     cameraStream = null;
@@ -466,24 +503,17 @@ function takePhoto() {
   canvas.width  = feed.videoWidth;
   canvas.height = feed.videoHeight;
 
-  const ctx         = canvas.getContext('2d');
-  const isMirrored  = feed.classList.contains('camera-feed--mirrored');
+  const ctx        = canvas.getContext('2d');
+  const isMirrored = currentFacingMode === 'user';
 
-  if (isMirrored) {
-    ctx.translate(canvas.width, 0);
-    ctx.scale(-1, 1);
-  }
+  if (isMirrored) { ctx.translate(canvas.width, 0); ctx.scale(-1, 1); }
   ctx.drawImage(feed, 0, 0);
 
   const photoPreview         = document.getElementById('camera-photo-preview');
   photoPreview.src           = canvas.toDataURL('image/jpeg');
   photoPreview.style.display = 'block';
-  feed.style.display         = 'none';
-
-  // Mirror the photo preview too so it matches what was shown
-  if (isMirrored) {
-    photoPreview.classList.add('camera-feed--mirrored');
-  }
+  if (isMirrored) photoPreview.classList.add('camera-feed--mirrored');
+  document.getElementById('camera-feed').style.display = 'none';
 
   document.getElementById('camera-btn-row').innerHTML = `
     <img src="icons/accept.png"  class="camera-action-btn" title="Accept"  onclick="acceptPhoto()">
@@ -499,27 +529,61 @@ async function acceptPhoto() {
   }, 'image/jpeg', 0.9);
 }
 
-// ── Video ─────────────────────────────────────────────────────────────────
+// ── Video (canvas-based so flipping works mid-recording) ──────────────────
+
+function stopCanvasDrawLoop() {
+  if (canvasDrawLoop) { cancelAnimationFrame(canvasDrawLoop); canvasDrawLoop = null; }
+}
+
+function startCanvasDrawLoop(feed, canvas, ctx) {
+  function draw() {
+    if (!document.getElementById('camera-preview')) return; // preview closed
+    const mirrored = currentFacingMode === 'user';
+    ctx.save();
+    if (mirrored) { ctx.translate(canvas.width, 0); ctx.scale(-1, 1); }
+    ctx.drawImage(feed, 0, 0, canvas.width, canvas.height);
+    ctx.restore();
+    canvasDrawLoop = requestAnimationFrame(draw);
+  }
+  draw();
+}
 
 function startVideoRecording() {
   if (!cameraStream) return;
   videoChunks = [];
+
+  const feed        = document.getElementById('camera-feed');
+  recordingCanvas   = document.createElement('canvas');
+  recordingCanvas.width  = feed.videoWidth  || 640;
+  recordingCanvas.height = feed.videoHeight || 480;
+  recordingCtx      = recordingCanvas.getContext('2d');
+
+  // Draw camera feed onto the hidden canvas every frame
+  startCanvasDrawLoop(feed, recordingCanvas, recordingCtx);
+
+  // Capture canvas + audio into a combined stream
+  const videoTrack = recordingCanvas.captureStream(30).getVideoTracks()[0];
+  const audioTrack = cameraStream.getAudioTracks()[0];
+  canvasRecordStream = new MediaStream(
+    [videoTrack, audioTrack].filter(Boolean)
+  );
+
   const mimeType      = MediaRecorder.isTypeSupported('video/mp4') ? 'video/mp4' : 'video/webm';
-  cameraMediaRecorder = new MediaRecorder(cameraStream, { mimeType });
+  cameraMediaRecorder = new MediaRecorder(canvasRecordStream, { mimeType });
 
   cameraMediaRecorder.ondataavailable = e => {
     if (e.data.size > 0) videoChunks.push(e.data);
   };
 
   cameraMediaRecorder.onstop = function() {
+    stopCanvasDrawLoop();
     const blob = new Blob(videoChunks, { type: mimeType });
     const url  = URL.createObjectURL(blob);
 
     const feed         = document.getElementById('camera-feed');
     const videoPreview = document.getElementById('camera-video-preview');
-    feed.style.display         = 'none';
-    videoPreview.src           = url;
-    videoPreview.style.display = 'block';
+    if (feed)         feed.style.display         = 'none';
+    if (videoPreview) { videoPreview.src = url; videoPreview.style.display = 'block'; }
 
     document.getElementById('camera-btn-row').innerHTML = `
       <img src="icons/accept.png"  class="camera-action-btn" title="Accept"  onclick="acceptVideo('${url}', '${mimeType}')">
@@ -537,6 +601,7 @@ function startVideoRecording() {
 function stopVideoRecording() {
   if (cameraMediaRecorder && cameraMediaRecorder.state !== 'inactive') {
     cameraMediaRecorder.stop();
+    cameraMediaRecorder = null;
   }
 }
 
