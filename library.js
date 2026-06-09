@@ -400,7 +400,7 @@ let cameraStream        = null;
 let cameraMediaRecorder = null;
 let videoChunks         = [];
 let cameraBoatId        = null;
-let currentFacingMode   = 'environment';
+let currentFacingMode   = 'user';
 
 // Canvas-based recording state
 let canvasRecordStream  = null;
