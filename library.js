@@ -103,7 +103,7 @@ function openBoatPanel(boat, cardEl) {
     }
     existing.remove();
   }
-  
+
   const panel = document.createElement('div');
   panel.id               = 'boat-panel';
   panel.dataset.boatId   = boat.id;
